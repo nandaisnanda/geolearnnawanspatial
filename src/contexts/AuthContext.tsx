@@ -4,12 +4,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface User {
   id: string;
   username: string;
+  email?: string;
   role: 'admin' | 'user';
+  avatar?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -32,21 +35,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     // Admin credentials
     if (username === 'anandagunawan' && password === 'mynameisanan') {
-      const adminUser = { id: '1', username: 'anandagunawan', role: 'admin' as const };
+      const adminUser = { 
+        id: '1', 
+        username: 'anandagunawan', 
+        email: 'admin@geolearn.com',
+        role: 'admin' as const,
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+      };
       setUser(adminUser);
       localStorage.setItem('geolearn_user', JSON.stringify(adminUser));
       return true;
     }
     
-    // Regular user - any other credentials
-    if (username && password) {
-      const regularUser = { id: '2', username, role: 'user' as const };
-      setUser(regularUser);
-      localStorage.setItem('geolearn_user', JSON.stringify(regularUser));
+    // Check registered users
+    const registeredUsers = JSON.parse(localStorage.getItem('geolearn_registered_users') || '[]');
+    const foundUser = registeredUsers.find((u: any) => u.username === username && u.password === password);
+    
+    if (foundUser) {
+      const userObj = {
+        id: foundUser.id,
+        username: foundUser.username,
+        email: foundUser.email,
+        role: 'user' as const,
+        avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face`
+      };
+      setUser(userObj);
+      localStorage.setItem('geolearn_user', JSON.stringify(userObj));
       return true;
     }
     
     return false;
+  };
+
+  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+    // Check if username or email already exists
+    const registeredUsers = JSON.parse(localStorage.getItem('geolearn_registered_users') || '[]');
+    const userExists = registeredUsers.find((u: any) => u.username === username || u.email === email);
+    
+    if (userExists) {
+      return false;
+    }
+    
+    const newUser = {
+      id: Date.now().toString(),
+      username,
+      email,
+      password,
+      role: 'user'
+    };
+    
+    registeredUsers.push(newUser);
+    localStorage.setItem('geolearn_registered_users', JSON.stringify(registeredUsers));
+    
+    // Auto-login after registration
+    const userObj = {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      role: 'user' as const,
+      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face`
+    };
+    setUser(userObj);
+    localStorage.setItem('geolearn_user', JSON.stringify(userObj));
+    
+    return true;
   };
 
   const logout = () => {
@@ -55,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

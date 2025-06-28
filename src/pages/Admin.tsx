@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,13 +7,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileVideo, FileText, Trash2, Edit, Users, BookOpen, BarChart3 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, FileVideo, FileText, Trash2, Edit, Users, BookOpen, BarChart3, CheckCircle, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navigate } from 'react-router-dom';
 
 const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  
   const [courses, setCourses] = useState([
     { id: 1, title: 'ArcGIS Pro Masterclass', lessons: 16, students: 2156, status: 'active' },
     { id: 2, title: 'Python for Geospatial Analysis', lessons: 14, students: 1847, status: 'active' },
@@ -41,6 +44,22 @@ const Admin = () => {
     return <Navigate to="/" replace />;
   }
 
+  const simulateUpload = () => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsUploading(false);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
+  };
+
   const handleFileUpload = (type: 'video' | 'pdf', file: File) => {
     setUploadData(prev => ({
       ...prev,
@@ -63,20 +82,39 @@ const Admin = () => {
       return;
     }
 
-    // Simulate upload
-    toast({
-      title: "Lesson Uploaded Successfully",
-      description: `${uploadData.lessonTitle} has been added to the course`,
-    });
+    simulateUpload();
+    
+    setTimeout(() => {
+      // Store lesson data in localStorage
+      const existingLessons = JSON.parse(localStorage.getItem('geolearn_lessons') || '[]');
+      const newLesson = {
+        id: Date.now(),
+        courseId: uploadData.courseId,
+        title: uploadData.lessonTitle,
+        description: uploadData.lessonDescription,
+        videoUrl: URL.createObjectURL(uploadData.videoFile),
+        pdfUrl: URL.createObjectURL(uploadData.pdfFile),
+        createdAt: new Date().toISOString()
+      };
+      
+      existingLessons.push(newLesson);
+      localStorage.setItem('geolearn_lessons', JSON.stringify(existingLessons));
+      
+      toast({
+        title: "Lesson Uploaded Successfully",
+        description: `${uploadData.lessonTitle} has been added to the course`,
+      });
 
-    // Reset form
-    setUploadData({
-      courseId: '',
-      lessonTitle: '',
-      lessonDescription: '',
-      videoFile: null,
-      pdfFile: null
-    });
+      // Reset form
+      setUploadData({
+        courseId: '',
+        lessonTitle: '',
+        lessonDescription: '',
+        videoFile: null,
+        pdfFile: null
+      });
+      setUploadProgress(0);
+    }, 2000);
   };
 
   const handleCreateCourse = () => {
@@ -104,6 +142,13 @@ const Admin = () => {
       title: "Course Created",
       description: `${newCourse.title} has been created successfully`,
     });
+  };
+
+  const removeFile = (type: 'video' | 'pdf') => {
+    setUploadData(prev => ({
+      ...prev,
+      [`${type}File`]: null
+    }));
   };
 
   const stats = [
@@ -148,7 +193,10 @@ const Admin = () => {
           <TabsContent value="upload" className="space-y-6">
             <Card className="glass-effect glow-border">
               <CardHeader>
-                <CardTitle className="text-2xl">Upload New Lesson</CardTitle>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <Upload className="h-6 w-6 text-geo-accent" />
+                  Upload New Lesson
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -195,62 +243,111 @@ const Admin = () => {
                     <div>
                       <Label>Video File</Label>
                       <div className="border-2 border-dashed border-geo-accent/30 rounded-lg p-6 text-center hover:border-geo-accent/50 transition-colors">
-                        <FileVideo className="h-12 w-12 text-geo-accent mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {uploadData.videoFile ? uploadData.videoFile.name : 'Drop video file here or click to browse'}
-                        </p>
-                        <input
-                          type="file"
-                          accept="video/*"
-                          onChange={(e) => e.target.files?.[0] && handleFileUpload('video', e.target.files[0])}
-                          className="hidden"
-                          id="video-upload"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById('video-upload')?.click()}
-                          className="border-geo-accent/30 text-geo-accent hover:bg-geo-accent/10"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Select Video
-                        </Button>
+                        {uploadData.videoFile ? (
+                          <div className="space-y-2">
+                            <CheckCircle className="h-8 w-8 text-green-500 mx-auto" />
+                            <p className="text-sm font-medium text-green-500">{uploadData.videoFile.name}</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => removeFile('video')}
+                              className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <FileVideo className="h-12 w-12 text-geo-accent mx-auto mb-4" />
+                            <p className="text-sm text-muted-foreground mb-2">Drop video file here or click to browse</p>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              onChange={(e) => e.target.files?.[0] && handleFileUpload('video', e.target.files[0])}
+                              className="hidden"
+                              id="video-upload"
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => document.getElementById('video-upload')?.click()}
+                              className="border-geo-accent/30 text-geo-accent hover:bg-geo-accent/10"
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Select Video
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                     
                     <div>
                       <Label>PDF File</Label>
                       <div className="border-2 border-dashed border-geo-highlight/30 rounded-lg p-6 text-center hover:border-geo-highlight/50 transition-colors">
-                        <FileText className="h-12 w-12 text-geo-highlight mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {uploadData.pdfFile ? uploadData.pdfFile.name : 'Drop PDF file here or click to browse'}
-                        </p>
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) => e.target.files?.[0] && handleFileUpload('pdf', e.target.files[0])}
-                          className="hidden"
-                          id="pdf-upload"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById('pdf-upload')?.click()}
-                          className="border-geo-highlight/30 text-geo-highlight hover:bg-geo-highlight/10"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Select PDF
-                        </Button>
+                        {uploadData.pdfFile ? (
+                          <div className="space-y-2">
+                            <CheckCircle className="h-8 w-8 text-green-500 mx-auto" />
+                            <p className="text-sm font-medium text-green-500">{uploadData.pdfFile.name}</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => removeFile('pdf')}
+                              className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <FileText className="h-12 w-12 text-geo-highlight mx-auto mb-4" />
+                            <p className="text-sm text-muted-foreground mb-2">Drop PDF file here or click to browse</p>
+                            <input
+                              type="file"
+                              accept=".pdf"
+                              onChange={(e) => e.target.files?.[0] && handleFileUpload('pdf', e.target.files[0])}
+                              className="hidden"
+                              id="pdf-upload"
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => document.getElementById('pdf-upload')?.click()}
+                              className="border-geo-highlight/30 text-geo-highlight hover:bg-geo-highlight/10"
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Select PDF
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
                 
+                {isUploading && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Uploading...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="w-full" />
+                  </div>
+                )}
+                
                 <Button
                   onClick={handleUploadLesson}
+                  disabled={isUploading}
                   className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold py-4 text-lg"
                 >
                   <Upload className="h-5 w-5 mr-2" />
-                  Upload Lesson
+                  {isUploading ? 'Uploading...' : 'Upload Lesson'}
                 </Button>
+                
+                <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-400">
+                    💡 <strong>Pro Tip:</strong> For production file uploads and Google authentication, connect to Supabase for secure storage and advanced features!
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
