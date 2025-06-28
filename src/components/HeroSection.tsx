@@ -1,8 +1,25 @@
 
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleStartLearning = () => {
+    if (user) {
+      navigate('/learn');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  const handleWatchDemo = () => {
+    navigate('/demo');
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background grid pattern */}
@@ -37,14 +54,16 @@ const HeroSection = () => {
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button 
             size="lg" 
+            onClick={handleStartLearning}
             className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold px-8 py-6 text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
           >
-            Start Learning
+            {user ? 'Continue Learning' : 'Start Learning'}
           </Button>
           
           <Button 
             variant="outline" 
             size="lg"
+            onClick={handleWatchDemo}
             className="border-geo-accent/50 text-geo-accent hover:bg-geo-accent/10 px-8 py-6 text-lg group"
           >
             <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
