@@ -1,5 +1,5 @@
 
-import { Search, User, Globe, LogOut, ArrowLeft } from "lucide-react";
+import { Search, User, Globe, LogOut, ArrowLeft, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,16 +14,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 
 const Header = () => {
-  const { user, logout } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login');
   };
 
   const showBackButton = location.pathname !== '/';
+
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case 'beginner': return 'bg-green-500';
+      case 'intermediate': return 'bg-yellow-500';
+      case 'advanced': return 'bg-orange-500';
+      case 'expert': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-geo-accent/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -60,9 +70,6 @@ const Header = () => {
           <Link to="/" className="text-sm font-medium hover:text-geo-accent transition-colors">
             Home
           </Link>
-          <Link to="/demo" className="text-sm font-medium hover:text-geo-accent transition-colors">
-            Demo
-          </Link>
           {user && (
             <>
               <Link to="/learn" className="text-sm font-medium hover:text-geo-accent transition-colors">
@@ -74,7 +81,10 @@ const Header = () => {
               <Link to="/community" className="text-sm font-medium hover:text-geo-accent transition-colors">
                 Community
               </Link>
-              {user.role === 'admin' && (
+              <Link to="/quiz" className="text-sm font-medium hover:text-geo-accent transition-colors">
+                Quiz
+              </Link>
+              {profile?.role === 'admin' && (
                 <Link to="/admin" className="text-sm font-medium hover:text-geo-accent transition-colors">
                   Admin
                 </Link>
@@ -95,30 +105,33 @@ const Header = () => {
             </div>
           )}
           
-          {user ? (
+          {user && profile ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8 border-2 border-geo-accent/30">
-                    <AvatarImage src={user.avatar} alt="User" />
+                    <AvatarImage src={profile.avatar_url} alt="User" />
                     <AvatarFallback className="bg-geo-accent/20 text-geo-accent">
-                      {user.username.substring(0, 2).toUpperCase()}
+                      {profile.full_name?.substring(0, 2).toUpperCase() || profile.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {user.role === 'admin' && (
+                  {profile.role === 'admin' && (
                     <Badge className="absolute -top-2 -right-2 bg-geo-highlight text-black text-xs px-1">
-                      Admin
+                      <Shield className="h-2 w-2" />
                     </Badge>
                   )}
+                  <Badge className={`absolute -bottom-2 -right-2 ${getTierColor(profile.tier_level)} text-white text-xs px-1`}>
+                    {profile.tier_level[0].toUpperCase()}
+                  </Badge>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-geo-dark border-geo-accent/30" align="end">
-                <DropdownMenuItem className="hover:bg-geo-accent/10">
+                <DropdownMenuItem 
+                  onClick={() => navigate('/profile')}
+                  className="hover:bg-geo-accent/10"
+                >
                   <User className="h-4 w-4 mr-2" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-geo-accent/10">
-                  Settings
+                  Profile ({profile.tier_level})
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="hover:bg-geo-accent/10">
                   <LogOut className="h-4 w-4 mr-2" />

@@ -14,6 +14,7 @@ import Community from "./pages/Community";
 import Learn from "./pages/Learn";
 import Quiz from "./pages/Quiz";
 import Admin from "./pages/Admin";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,14 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/demo" element={<Demo />} />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/my-progress" 
               element={

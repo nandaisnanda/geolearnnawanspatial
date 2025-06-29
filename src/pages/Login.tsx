@@ -1,41 +1,48 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Globe, Eye, EyeOff } from 'lucide-react';
+import { Globe, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
-  const [loginData, setLoginData] = useState({ username: '', password: '' });
-  const [registerData, setRegisterData] = useState({ username: '', email: '', password: '', confirmPassword: '' });
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [registerData, setRegisterData] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    const success = await login(loginData.username, loginData.password);
+    const { error } = await signInWithEmail(loginData.email, loginData.password);
     
-    if (success) {
+    if (error) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials. Please try again.",
+        variant: "destructive",
+      });
+    } else {
       toast({
         title: "Login Successful",
         description: "Welcome back to GeoLearn!",
       });
       navigate('/');
-    } else {
-      toast({
-        title: "Login Failed",
-        description: "Invalid credentials. Please try again.",
-        variant: "destructive",
-      });
     }
     
     setIsLoading(false);
@@ -55,31 +62,37 @@ const Login = () => {
     
     setIsLoading(true);
     
-    const success = await register(registerData.username, registerData.email, registerData.password);
+    const { error } = await signUpWithEmail(registerData.email, registerData.password, registerData.fullName);
     
-    if (success) {
-      toast({
-        title: "Registration Successful",
-        description: "Welcome to GeoLearn!",
-      });
-      navigate('/');
-    } else {
+    if (error) {
       toast({
         title: "Registration Failed",
-        description: "Username or email already exists.",
+        description: error.message || "An error occurred during registration.",
         variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Registration Successful",
+        description: "Please check your email to verify your account.",
       });
     }
     
     setIsLoading(false);
   };
 
-  const handleGoogleSignIn = () => {
-    toast({
-      title: "Google Sign-In",
-      description: "Please connect to Supabase to enable Google authentication.",
-      variant: "destructive",
-    });
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    const { error } = await signInWithGoogle();
+    
+    if (error) {
+      toast({
+        title: "Google Sign-In Failed",
+        description: error.message || "Failed to sign in with Google.",
+        variant: "destructive",
+      });
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -88,6 +101,15 @@ const Login = () => {
       
       <Card className="w-full max-w-md glass-effect glow-border relative z-10">
         <CardHeader className="text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="absolute left-4 top-4 hover:bg-geo-accent/10 text-geo-accent"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          
           <div className="flex justify-center mb-4">
             <div className="relative">
               <Globe className="h-12 w-12 text-geo-accent animate-spin-slow" />
@@ -110,10 +132,10 @@ const Login = () => {
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <Input
-                    type="text"
-                    placeholder="Username"
-                    value={loginData.username}
-                    onChange={(e) => setLoginData(prev => ({ ...prev, username: e.target.value }))}
+                    type="email"
+                    placeholder="Email"
+                    value={loginData.email}
+                    onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
                     className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
                     required
                   />
@@ -152,9 +174,9 @@ const Login = () => {
                 <div>
                   <Input
                     type="text"
-                    placeholder="Username"
-                    value={registerData.username}
-                    onChange={(e) => setRegisterData(prev => ({ ...prev, username: e.target.value }))}
+                    placeholder="Full Name"
+                    value={registerData.fullName}
+                    onChange={(e) => setRegisterData(prev => ({ ...prev, fullName: e.target.value }))}
                     className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
                     required
                   />
@@ -218,6 +240,7 @@ const Login = () => {
               onClick={handleGoogleSignIn}
               variant="outline"
               className="w-full mt-4 border-geo-accent/30 hover:bg-geo-accent/10"
+              disabled={isLoading}
             >
               <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -227,14 +250,6 @@ const Login = () => {
               </svg>
               Continue with Google
             </Button>
-          </div>
-          
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo Credentials:</p>
-            <p className="text-geo-accent">Admin: anandagunawan / mynameisanan</p>
-            <div className="mt-2 p-2 bg-geo-accent/5 rounded border border-geo-accent/20">
-              <p className="text-xs">💡 For Google sign-in & file uploads, connect to Supabase!</p>
-            </div>
           </div>
         </CardContent>
       </Card>
