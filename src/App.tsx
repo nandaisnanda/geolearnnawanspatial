@@ -12,6 +12,7 @@ import Demo from "./pages/Demo";
 import MyProgress from "./pages/MyProgress";
 import Community from "./pages/Community";
 import Learn from "./pages/Learn";
+import Quiz from "./pages/Quiz";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
