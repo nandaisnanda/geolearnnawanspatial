@@ -1,5 +1,5 @@
 
-import { Search, User, Globe, LogOut } from "lucide-react";
+import { Search, User, Globe, LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,30 +11,49 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 
 const Header = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const showBackButton = location.pathname !== '/';
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-geo-accent/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
-          <div className="relative">
-            <Globe className="h-8 w-8 text-geo-accent animate-spin-slow" />
-            <div className="absolute inset-0 bg-geo-accent/20 rounded-full blur-md animate-pulse-glow"></div>
-          </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-geo-accent to-white bg-clip-text text-transparent">
-            GeoLearn
-          </span>
-        </Link>
+        <div className="flex items-center space-x-4">
+          {showBackButton && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="hover:bg-geo-accent/10 text-geo-accent"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="relative">
+              <Globe className="h-8 w-8 text-geo-accent animate-spin-slow" />
+              <div className="absolute inset-0 bg-geo-accent/20 rounded-full blur-md animate-pulse-glow"></div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold bg-gradient-to-r from-geo-accent to-white bg-clip-text text-transparent">
+                GeoLearn
+              </span>
+              <span className="text-xs text-muted-foreground -mt-1">by NawanSpatial</span>
+            </div>
+          </Link>
+        </div>
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
@@ -81,7 +100,7 @@ const Header = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8 border-2 border-geo-accent/30">
-                    <AvatarImage src="/placeholder.svg" alt="User" />
+                    <AvatarImage src={user.avatar} alt="User" />
                     <AvatarFallback className="bg-geo-accent/20 text-geo-accent">
                       {user.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
