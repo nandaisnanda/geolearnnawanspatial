@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -56,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -69,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -80,65 +83,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Properly type the profile data
+      console.log('Profile data:', data);
+
+      // Properly type the profile data with validation
       const profileData: Profile = {
         id: data.id,
-        username: data.username,
-        email: data.email,
-        full_name: data.full_name,
+        username: data.username || '',
+        email: data.email || '',
+        full_name: data.full_name || '',
         avatar_url: data.avatar_url,
-        tier_level: data.tier_level as 'beginner' | 'intermediate' | 'advanced' | 'expert',
-        role: data.role as 'user' | 'admin',
+        tier_level: (['beginner', 'intermediate', 'advanced', 'expert'].includes(data.tier_level) 
+          ? data.tier_level 
+          : 'beginner') as 'beginner' | 'intermediate' | 'advanced' | 'expert',
+        role: (['user', 'admin'].includes(data.role) 
+          ? data.role 
+          : 'user') as 'user' | 'admin',
         created_at: data.created_at,
         updated_at: data.updated_at
       };
 
       setProfile(profileData);
+      console.log('Profile set:', profileData);
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
   };
 
   const signInWithGoogle = async () => {
-    const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      console.log('Attempting Google sign-in with redirect:', redirectUrl);
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl
+        }
+      });
+      
+      if (error) {
+        console.error('Google sign-in error:', error);
       }
-    });
-    return { error };
+      
+      return { error };
+    } catch (err) {
+      console.error('Google sign-in exception:', err);
+      return { error: err };
+    }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { error };
+    try {
+      console.log('Attempting email sign-in for:', email);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Email sign-in error:', error);
+      }
+      
+      return { error };
+    } catch (err) {
+      console.error('Email sign-in exception:', err);
+      return { error: err };
+    }
   };
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          username: email.split('@')[0]
+    try {
+      console.log('Attempting email sign-up for:', email);
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName,
+            username: email.split('@')[0]
+          }
         }
+      });
+      
+      if (error) {
+        console.error('Email sign-up error:', error);
       }
-    });
-    return { error };
+      
+      return { error };
+    } catch (err) {
+      console.error('Email sign-up exception:', err);
+      return { error: err };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setSession(null);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      console.log('User signed out');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   return (

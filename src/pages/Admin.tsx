@@ -5,55 +5,74 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileVideo, FileText, Trash2, Edit, Users, BookOpen, BarChart3, CheckCircle, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Upload, Users, BookOpen, BarChart3, Settings, Plus, Edit, Trash2 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import Header from '@/components/Header';
 
 const Admin = () => {
-  const { profile } = useAuth();
+  const { profile, isLoading } = useAuth();
   const { toast } = useToast();
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  
+
+  // Mock data for demonstration
   const [courses, setCourses] = useState([
-    { id: 1, title: 'ArcGIS Pro Masterclass', lessons: 16, students: 2156, status: 'active' },
-    { id: 2, title: 'Python for Geospatial Analysis', lessons: 14, students: 1847, status: 'active' },
-    { id: 3, title: 'Climate Change Monitoring', lessons: 10, students: 956, status: 'draft' }
+    { id: 1, title: 'Introduction to Geography', students: 150, status: 'published' },
+    { id: 2, title: 'Advanced Cartography', students: 85, status: 'draft' },
+    { id: 3, title: 'GIS Fundamentals', students: 200, status: 'published' },
   ]);
 
-  const [newCourse, setNewCourse] = useState({
-    title: '',
-    description: '',
-    instructor: '',
-    duration: ''
-  });
+  const [users] = useState([
+    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'user', tier: 'intermediate' },
+    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'user', tier: 'advanced' },
+    { id: 3, name: 'Admin User', email: 'anandagunawan@gmail.com', role: 'admin', tier: 'expert' },
+  ]);
 
-  const [uploadData, setUploadData] = useState({
-    courseId: '',
-    lessonTitle: '',
-    lessonDescription: '',
-    videoFile: null as File | null,
-    pdfFile: null as File | null
-  });
+  const stats = {
+    totalUsers: users.length,
+    totalCourses: courses.length,
+    activeCourses: courses.filter(c => c.status === 'published').length,
+    totalStudents: courses.reduce((sum, course) => sum + course.students, 0),
+  };
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-geo-accent"></div>
+          <div className="absolute inset-0 bg-geo-accent/20 rounded-full blur-md animate-pulse-glow"></div>
+        </div>
+      </div>
+    );
+  }
 
   // Redirect if not admin
-  if (profile?.role !== 'admin') {
+  if (!profile || profile.role !== 'admin') {
+    console.log('Access denied - Profile:', profile);
     return <Navigate to="/" replace />;
   }
 
-  const simulateUpload = () => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     setIsUploading(true);
     setUploadProgress(0);
-    
+
+    // Simulate file upload progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsUploading(false);
+          toast({
+            title: "Upload Complete",
+            description: `${file.name} has been uploaded successfully.`,
+          });
           return 100;
         }
         return prev + 10;
@@ -61,441 +80,208 @@ const Admin = () => {
     }, 200);
   };
 
-  const handleFileUpload = (type: 'video' | 'pdf', file: File) => {
-    setUploadData(prev => ({
-      ...prev,
-      [`${type}File`]: file
-    }));
-    
+  const handleDeleteCourse = (courseId: number) => {
+    setCourses(courses.filter(c => c.id !== courseId));
     toast({
-      title: `${type.toUpperCase()} Selected`,
-      description: `${file.name} ready for upload`,
+      title: "Course Deleted",
+      description: "The course has been removed successfully.",
     });
   };
-
-  const handleUploadLesson = () => {
-    if (!uploadData.courseId || !uploadData.lessonTitle || !uploadData.videoFile || !uploadData.pdfFile) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill all fields and select both video and PDF files",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    simulateUpload();
-    
-    setTimeout(() => {
-      // Store lesson data in localStorage
-      const existingLessons = JSON.parse(localStorage.getItem('geolearn_lessons') || '[]');
-      const newLesson = {
-        id: Date.now(),
-        courseId: uploadData.courseId,
-        title: uploadData.lessonTitle,
-        description: uploadData.lessonDescription,
-        videoUrl: URL.createObjectURL(uploadData.videoFile),
-        pdfUrl: URL.createObjectURL(uploadData.pdfFile),
-        createdAt: new Date().toISOString()
-      };
-      
-      existingLessons.push(newLesson);
-      localStorage.setItem('geolearn_lessons', JSON.stringify(existingLessons));
-      
-      toast({
-        title: "Lesson Uploaded Successfully",
-        description: `${uploadData.lessonTitle} has been added to the course`,
-      });
-
-      // Reset form
-      setUploadData({
-        courseId: '',
-        lessonTitle: '',
-        lessonDescription: '',
-        videoFile: null,
-        pdfFile: null
-      });
-      setUploadProgress(0);
-    }, 2000);
-  };
-
-  const handleCreateCourse = () => {
-    if (!newCourse.title || !newCourse.description) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in course title and description",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const course = {
-      id: courses.length + 1,
-      title: newCourse.title,
-      lessons: 0,
-      students: 0,
-      status: 'draft' as const
-    };
-
-    setCourses([...courses, course]);
-    setNewCourse({ title: '', description: '', instructor: '', duration: '' });
-
-    toast({
-      title: "Course Created",
-      description: `${newCourse.title} has been created successfully`,
-    });
-  };
-
-  const removeFile = (type: 'video' | 'pdf') => {
-    setUploadData(prev => ({
-      ...prev,
-      [`${type}File`]: null
-    }));
-  };
-
-  const stats = [
-    { label: 'Total Courses', value: '12', icon: <BookOpen className="h-8 w-8 text-geo-accent" /> },
-    { label: 'Active Students', value: '4,959', icon: <Users className="h-8 w-8 text-geo-highlight" /> },
-    { label: 'Total Lessons', value: '156', icon: <FileVideo className="h-8 w-8 text-blue-500" /> },
-    { label: 'Completion Rate', value: '89%', icon: <BarChart3 className="h-8 w-8 text-green-500" /> }
-  ];
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="container mx-auto max-w-7xl">
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-geo-accent to-geo-highlight bg-clip-text text-transparent">
             Admin Dashboard
           </h1>
-          <p className="text-muted-foreground">Welcome back, {profile?.username}! Manage your courses and content.</p>
+          <p className="text-muted-foreground">Welcome back, {profile?.full_name || profile?.username}! Manage your courses and content.</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index} className="glass-effect glow-border">
-              <CardContent className="p-6 text-center">
-                <div className="flex justify-center mb-4">
-                  {stat.icon}
-                </div>
-                <div className="text-3xl font-bold text-geo-accent mb-2">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </CardContent>
-            </Card>
-          ))}
+          <Card className="glass-effect glow-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-geo-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-geo-accent">{stats.totalUsers}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-effect glow-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Courses</CardTitle>
+              <BookOpen className="h-4 w-4 text-geo-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-geo-accent">{stats.totalCourses}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-effect glow-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Courses</CardTitle>
+              <BarChart3 className="h-4 w-4 text-geo-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-geo-accent">{stats.activeCourses}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-effect glow-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Students</CardTitle>
+              <Users className="h-4 w-4 text-geo-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-geo-accent">{stats.totalStudents}</div>
+            </CardContent>
+          </Card>
         </div>
 
-        <Tabs defaultValue="upload" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-geo-dark/50">
-            <TabsTrigger value="upload" className="data-[state=active]:bg-geo-accent/20">Upload Content</TabsTrigger>
-            <TabsTrigger value="courses" className="data-[state=active]:bg-geo-accent/20">Manage Courses</TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-geo-accent/20">Analytics</TabsTrigger>
-          </TabsList>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Course Management */}
+          <Card className="glass-effect glow-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-geo-accent" />
+                Course Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Course
+              </Button>
+              
+              <div className="space-y-2">
+                {courses.map((course) => (
+                  <div key={course.id} className="flex items-center justify-between p-3 rounded-lg bg-geo-dark/30 border border-geo-accent/20">
+                    <div>
+                      <h4 className="font-medium">{course.title}</h4>
+                      <p className="text-sm text-muted-foreground">{course.students} students</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={course.status === 'published' ? 'default' : 'secondary'}>
+                        {course.status}
+                      </Badge>
+                      <Button size="sm" variant="ghost">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteCourse(course.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          <TabsContent value="upload" className="space-y-6">
-            <Card className="glass-effect glow-border">
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <Upload className="h-6 w-6 text-geo-accent" />
-                  Upload New Lesson
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="courseSelect">Select Course</Label>
-                      <select
-                        id="courseSelect"
-                        value={uploadData.courseId}
-                        onChange={(e) => setUploadData(prev => ({ ...prev, courseId: e.target.value }))}
-                        className="w-full mt-1 p-2 bg-geo-dark/50 border border-geo-accent/30 rounded-md focus:border-geo-accent"
-                      >
-                        <option value="">Choose a course</option>
-                        {courses.map(course => (
-                          <option key={course.id} value={course.id}>{course.title}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="lessonTitle">Lesson Title</Label>
-                      <Input
-                        id="lessonTitle"
-                        value={uploadData.lessonTitle}
-                        onChange={(e) => setUploadData(prev => ({ ...prev, lessonTitle: e.target.value }))}
-                        className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
-                        placeholder="Enter lesson title"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="lessonDescription">Lesson Description</Label>
-                      <Textarea
-                        id="lessonDescription"
-                        value={uploadData.lessonDescription}
-                        onChange={(e) => setUploadData(prev => ({ ...prev, lessonDescription: e.target.value }))}
-                        className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
-                        placeholder="Enter lesson description"
-                      />
-                    </div>
+          {/* Content Upload */}
+          <Card className="glass-effect glow-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5 text-geo-accent" />
+                Content Upload
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label htmlFor="file-upload" className="block text-sm font-medium mb-2">
+                  Upload Course Materials
+                </label>
+                <Input
+                  id="file-upload"
+                  type="file"
+                  onChange={handleFileUpload}
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mp3"
+                  className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
+                />
+              </div>
+              
+              {isUploading && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Uploading...</span>
+                    <span>{uploadProgress}%</span>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Video File</Label>
-                      <div className="border-2 border-dashed border-geo-accent/30 rounded-lg p-6 text-center hover:border-geo-accent/50 transition-colors">
-                        {uploadData.videoFile ? (
-                          <div className="space-y-2">
-                            <CheckCircle className="h-8 w-8 text-green-500 mx-auto" />
-                            <p className="text-sm font-medium text-green-500">{uploadData.videoFile.name}</p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => removeFile('video')}
-                              className="border-red-500/30 text-red-500 hover:bg-red-500/10"
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              Remove
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <FileVideo className="h-12 w-12 text-geo-accent mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground mb-2">Drop video file here or click to browse</p>
-                            <input
-                              type="file"
-                              accept="video/*"
-                              onChange={(e) => e.target.files?.[0] && handleFileUpload('video', e.target.files[0])}
-                              className="hidden"
-                              id="video-upload"
-                            />
-                            <Button
-                              variant="outline"
-                              onClick={() => document.getElementById('video-upload')?.click()}
-                              className="border-geo-accent/30 text-geo-accent hover:bg-geo-accent/10"
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Select Video
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label>PDF File</Label>
-                      <div className="border-2 border-dashed border-geo-highlight/30 rounded-lg p-6 text-center hover:border-geo-highlight/50 transition-colors">
-                        {uploadData.pdfFile ? (
-                          <div className="space-y-2">
-                            <CheckCircle className="h-8 w-8 text-green-500 mx-auto" />
-                            <p className="text-sm font-medium text-green-500">{uploadData.pdfFile.name}</p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => removeFile('pdf')}
-                              className="border-red-500/30 text-red-500 hover:bg-red-500/10"
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              Remove
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <FileText className="h-12 w-12 text-geo-highlight mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground mb-2">Drop PDF file here or click to browse</p>
-                            <input
-                              type="file"
-                              accept=".pdf"
-                              onChange={(e) => e.target.files?.[0] && handleFileUpload('pdf', e.target.files[0])}
-                              className="hidden"
-                              id="pdf-upload"
-                            />
-                            <Button
-                              variant="outline"
-                              onClick={() => document.getElementById('pdf-upload')?.click()}
-                              className="border-geo-highlight/30 text-geo-highlight hover:bg-geo-highlight/10"
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Select PDF
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <Progress value={uploadProgress} className="w-full" />
                 </div>
-                
-                {isUploading && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Uploading...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <Progress value={uploadProgress} className="w-full" />
-                  </div>
-                )}
-                
-                <Button
-                  onClick={handleUploadLesson}
-                  disabled={isUploading}
-                  className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold py-4 text-lg"
-                >
-                  <Upload className="h-5 w-5 mr-2" />
-                  {isUploading ? 'Uploading...' : 'Upload Lesson'}
+              )}
+              
+              <div className="space-y-2">
+                <Input
+                  placeholder="Content Title"
+                  className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
+                />
+                <Textarea
+                  placeholder="Content Description"
+                  className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
+                />
+                <Button className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold">
+                  Save Content
                 </Button>
-                
-                <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-sm text-blue-400">
-                    💡 <strong>Pro Tip:</strong> For production file uploads and Google authentication, connect to Supabase for secure storage and advanced features!
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          <TabsContent value="courses" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Create Course */}
-              <Card className="glass-effect glow-border">
-                <CardHeader>
-                  <CardTitle className="text-xl">Create New Course</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="courseTitle">Course Title</Label>
-                    <Input
-                      id="courseTitle"
-                      value={newCourse.title}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, title: e.target.value }))}
-                      className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
-                      placeholder="Enter course title"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="courseDescription">Description</Label>
-                    <Textarea
-                      id="courseDescription"
-                      value={newCourse.description}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, description: e.target.value }))}
-                      className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
-                      placeholder="Enter course description"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="courseInstructor">Instructor</Label>
-                    <Input
-                      id="courseInstructor"
-                      value={newCourse.instructor}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, instructor: e.target.value }))}
-                      className="bg-geo-dark/50 border-geo-accent/30 focus:border-geo-accent"
-                      placeholder="Enter instructor name"
-                    />
-                  </div>
-                  
-                  <Button
-                    onClick={handleCreateCourse}
-                    className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold"
-                  >
-                    Create Course
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Course List */}
-              <Card className="glass-effect glow-border">
-                <CardHeader>
-                  <CardTitle className="text-xl">Existing Courses</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {courses.map((course) => (
-                      <div key={course.id} className="p-4 bg-geo-dark/30 rounded-lg border border-geo-accent/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">{course.title}</h3>
-                          <Badge variant={course.status === 'active' ? 'default' : 'outline'}>
-                            {course.status}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                          <span>{course.lessons} lessons</span>
-                          <span>{course.students} students</span>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button size="sm" variant="outline" className="border-geo-accent/30 text-geo-accent hover:bg-geo-accent/10">
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
+        {/* User Management */}
+        <Card className="glass-effect glow-border mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-geo-accent" />
+              User Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-geo-accent/20">
+                    <th className="text-left p-2">Name</th>
+                    <th className="text-left p-2">Email</th>
+                    <th className="text-left p-2">Role</th>
+                    <th className="text-left p-2">Tier</th>
+                    <th className="text-left p-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-geo-accent/10">
+                      <td className="p-2">{user.name}</td>
+                      <td className="p-2">{user.email}</td>
+                      <td className="p-2">
+                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                          {user.role}
+                        </Badge>
+                      </td>
+                      <td className="p-2">
+                        <Badge variant="outline">{user.tier}</Badge>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost">
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline" className="border-red-500/30 text-red-500 hover:bg-red-500/10">
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
+                          <Button size="sm" variant="ghost">
+                            <Settings className="h-4 w-4" />
                           </Button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="glass-effect glow-border">
-                <CardHeader>
-                  <CardTitle className="text-xl">Course Performance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {courses.map((course) => (
-                      <div key={course.id} className="p-4 bg-geo-dark/30 rounded-lg">
-                        <h3 className="font-semibold mb-2">{course.title}</h3>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Students: </span>
-                            <span className="text-geo-accent font-semibold">{course.students}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Completion: </span>
-                            <span className="text-geo-highlight font-semibold">
-                              {Math.floor(Math.random() * 30 + 70)}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-effect glow-border">
-                <CardHeader>
-                  <CardTitle className="text-xl">Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-geo-accent/10 rounded-lg">
-                      <p className="font-semibold">New enrollment</p>
-                      <p className="text-sm text-muted-foreground">5 new students joined ArcGIS Pro course</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                    <div className="p-4 bg-geo-highlight/10 rounded-lg">
-                      <p className="font-semibold">Course completed</p>
-                      <p className="text-sm text-muted-foreground">Student completed Python course</p>
-                      <p className="text-xs text-muted-foreground">4 hours ago</p>
-                    </div>
-                    <div className="p-4 bg-green-500/10 rounded-lg">
-                      <p className="font-semibold">High rating received</p>
-                      <p className="text-sm text-muted-foreground">Climate course received 5-star rating</p>
-                      <p className="text-xs text-muted-foreground">1 day ago</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
