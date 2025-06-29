@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageSquare, Heart, Reply, Send, Users, TrendingUp } from 'lucide-react';
+import Header from '@/components/Header';
 
 const Community = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState([
     {
@@ -49,8 +50,8 @@ const Community = () => {
     if (newMessage.trim()) {
       const message = {
         id: messages.length + 1,
-        user: user?.username || 'Anonymous',
-        avatar: user?.username?.substring(0, 2).toUpperCase() || 'AN',
+        user: profile?.username || 'Anonymous',
+        avatar: profile?.username?.substring(0, 2).toUpperCase() || 'AN',
         message: newMessage,
         time: 'Just now',
         likes: 0,
@@ -71,8 +72,9 @@ const Community = () => {
   const topicTags = ['ArcGIS Pro', 'Python', 'Climate', 'Remote Sensing', 'Cartography', 'Data Analysis'];
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-geo-accent to-geo-highlight bg-clip-text text-transparent">
             Community

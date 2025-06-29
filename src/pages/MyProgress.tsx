@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, BookOpen, Clock, Star, TrendingUp } from 'lucide-react';
+import Header from '@/components/Header';
 
 const MyProgress = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   const courseProgress = [
     { id: 1, title: "ArcGIS Pro Masterclass", progress: 75, completed: 12, total: 16, timeSpent: "24h" },
@@ -30,13 +31,14 @@ const MyProgress = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-geo-accent to-geo-highlight bg-clip-text text-transparent">
             My Progress
           </h1>
-          <p className="text-muted-foreground">Welcome back, {user?.username}! Here's your learning journey.</p>
+          <p className="text-muted-foreground">Welcome back, {profile?.username}! Here's your learning journey.</p>
         </div>
 
         {/* Stats Cards */}

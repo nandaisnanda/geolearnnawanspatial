@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { PlayCircle, FileText, Download, Clock, User, Star, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Header from '@/components/Header';
 
 interface Lesson {
   id: number;
@@ -19,7 +20,7 @@ interface Lesson {
 }
 
 const Learn = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -87,6 +88,7 @@ const Learn = () => {
   if (selectedLesson) {
     return (
       <div className="min-h-screen bg-background">
+        <Header />
         <div className="container mx-auto px-6 py-8">
           <div className="mb-6">
             <Button
@@ -238,13 +240,14 @@ const Learn = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-geo-accent to-geo-highlight bg-clip-text text-transparent">
             Continue Learning
           </h1>
           <p className="text-muted-foreground">
-            Welcome back, {user?.username}! Pick up where you left off.
+            Welcome back, {profile?.username}! Pick up where you left off.
           </p>
         </div>
 

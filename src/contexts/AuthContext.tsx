@@ -80,7 +80,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      setProfile(data);
+      // Properly type the profile data
+      const profileData: Profile = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        full_name: data.full_name,
+        avatar_url: data.avatar_url,
+        tier_level: data.tier_level as 'beginner' | 'intermediate' | 'advanced' | 'expert',
+        role: data.role as 'user' | 'admin',
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
+      setProfile(profileData);
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
