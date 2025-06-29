@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Navigate } from 'react-router-dom';
 
 const Admin = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -40,7 +41,7 @@ const Admin = () => {
   });
 
   // Redirect if not admin
-  if (user?.role !== 'admin') {
+  if (profile?.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
@@ -165,7 +166,7 @@ const Admin = () => {
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-geo-accent to-geo-highlight bg-clip-text text-transparent">
             Admin Dashboard
           </h1>
-          <p className="text-muted-foreground">Welcome back, {user?.username}! Manage your courses and content.</p>
+          <p className="text-muted-foreground">Welcome back, {profile?.username}! Manage your courses and content.</p>
         </div>
 
         {/* Stats Cards */}
