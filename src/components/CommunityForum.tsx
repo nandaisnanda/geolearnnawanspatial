@@ -45,7 +45,7 @@ const CommunityForum = () => {
         .from('community_posts')
         .select(`
           *,
-          profiles (
+          profiles!community_posts_user_id_fkey (
             username,
             full_name
           )
