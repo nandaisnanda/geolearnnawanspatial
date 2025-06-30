@@ -37,23 +37,35 @@ const CommunityForum = () => {
     topic_tag: 'general'
   });
 
-  // Fetch posts
+  // Fetch posts with profiles
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ['community-posts'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First fetch posts
+      const { data: postsData, error: postsError } = await supabase
         .from('community_posts')
-        .select(`
-          *,
-          profiles!community_posts_user_id_fkey (
-            username,
-            full_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return data as Post[];
+      if (postsError) throw postsError;
+      
+      // Then fetch profiles for each post
+      const userIds = [...new Set(postsData.map(post => post.user_id).filter(Boolean))];
+      
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, full_name')
+        .in('id', userIds);
+      
+      if (profilesError) throw profilesError;
+      
+      // Combine posts with profiles
+      const postsWithProfiles = postsData.map(post => ({
+        ...post,
+        profiles: profilesData.find(profile => profile.id === post.user_id) || null
+      }));
+      
+      return postsWithProfiles as Post[];
     },
     enabled: !!user
   });
