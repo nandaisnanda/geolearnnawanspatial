@@ -66,9 +66,15 @@ const CourseQuiz: React.FC<CourseQuizProps> = ({ courseId }) => {
         throw error;
       }
       
+      // Transform the data to match our interfaces
+      const transformedQuestions = data.quiz_questions.map((q: any) => ({
+        ...q,
+        options: Array.isArray(q.options) ? q.options : []
+      })) as Question[];
+
       return {
         ...data,
-        quiz_questions: data.quiz_questions.sort((a: Question, b: Question) => a.order_index - b.order_index)
+        quiz_questions: transformedQuestions.sort((a: Question, b: Question) => a.order_index - b.order_index)
       };
     },
     enabled: !!courseId

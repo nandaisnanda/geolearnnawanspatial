@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,7 @@ interface Post {
   profiles?: {
     username: string;
     full_name: string;
-  };
+  } | null;
 }
 
 const CommunityForum = () => {
@@ -46,7 +45,7 @@ const CommunityForum = () => {
         .from('community_posts')
         .select(`
           *,
-          profiles:user_id (
+          profiles!community_posts_user_id_fkey (
             username,
             full_name
           )
