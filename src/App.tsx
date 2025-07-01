@@ -16,6 +16,14 @@ import Quiz from "./pages/Quiz";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
+import Documentation from "./pages/Documentation";
+import Tutorials from "./pages/Tutorials";
+import HelpCenter from "./pages/HelpCenter";
+import Blog from "./pages/Blog";
+import Careers from "./pages/Careers";
+import Contact from "./pages/Contact";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +40,14 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/about" element={<About />} />
+            <Route path="/documentation" element={<Documentation />} />
+            <Route path="/tutorials" element={<Tutorials />} />
+            <Route path="/help-center" element={<HelpCenter />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/careers" element={<Careers />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route 
               path="/profile" 
               element={

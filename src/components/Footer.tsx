@@ -1,5 +1,6 @@
 
 import { Globe, MapPin, Layers, Map } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -22,27 +23,27 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Courses */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">Courses</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-geo-accent transition-colors">GIS Fundamentals</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Remote Sensing</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Spatial Analysis</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Web GIS</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Python for GIS</a></li>
-            </ul>
-          </div>
-
           {/* Resources */}
           <div>
             <h3 className="font-semibold text-white mb-4">Resources</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Documentation</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Tutorials</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Community Forum</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Help Center</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Blog</a></li>
+              <li><Link to="/documentation" className="hover:text-geo-accent transition-colors">Documentation</Link></li>
+              <li><Link to="/tutorials" className="hover:text-geo-accent transition-colors">Tutorials</Link></li>
+              <li><Link to="/community" className="hover:text-geo-accent transition-colors">Community Forum</Link></li>
+              <li><Link to="/help-center" className="hover:text-geo-accent transition-colors">Help Center</Link></li>
+              <li><Link to="/blog" className="hover:text-geo-accent transition-colors">Blog</Link></li>
+            </ul>
+          </div>
+
+          {/* Courses */}
+          <div>
+            <h3 className="font-semibold text-white mb-4">Learning</h3>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><Link to="/" className="hover:text-geo-accent transition-colors">Browse Courses</Link></li>
+              <li><Link to="/learn" className="hover:text-geo-accent transition-colors">My Learning</Link></li>
+              <li><Link to="/my-progress" className="hover:text-geo-accent transition-colors">My Progress</Link></li>
+              <li><Link to="/quiz" className="hover:text-geo-accent transition-colors">Assessments</Link></li>
+              <li><Link to="/demo" className="hover:text-geo-accent transition-colors">Platform Demo</Link></li>
             </ul>
           </div>
 
@@ -50,11 +51,11 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold text-white mb-4">Company</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-geo-accent transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Careers</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Contact</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-geo-accent transition-colors">Terms of Service</a></li>
+              <li><Link to="/about" className="hover:text-geo-accent transition-colors">About Us</Link></li>
+              <li><Link to="/careers" className="hover:text-geo-accent transition-colors">Join Our Teaching Team</Link></li>
+              <li><Link to="/contact" className="hover:text-geo-accent transition-colors">Contact</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-geo-accent transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="hover:text-geo-accent transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>

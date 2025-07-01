@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Chrome } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } = useAuth();
+  const { user, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -78,7 +78,7 @@ const Login = () => {
             title: "Account Created!",
             description: "Please check your email to verify your account.",
           });
-          setIsSignUp(false); // Switch to login after successful signup
+          setIsSignUp(false);
         }
       } else {
         const { error } = await signInWithEmail(formData.email, formData.password);
@@ -99,32 +99,6 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Auth error:', error);
-      toast({
-        title: "Authentication Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    setIsLoading(true);
-    try {
-      const { error } = await signInWithGoogle();
-      
-      if (error) {
-        console.error('Google auth error:', error);
-        toast({
-          title: "Google Sign-In Failed",
-          description: "Failed to sign in with Google. Please try again or use email/password.",
-          variant: "destructive",
-        });
-      }
-      // Success handling is done in the auth context
-    } catch (error) {
-      console.error('Google auth error:', error);
       toast({
         title: "Authentication Error",
         description: "An unexpected error occurred. Please try again.",
@@ -338,31 +312,6 @@ const Login = () => {
                   Forgot your password?
                 </Button>
               </div>
-            )}
-
-            {/* Google Sign In (not shown in forgot password) */}
-            {!showForgotPassword && (
-              <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator className="w-full" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-
-                <Button 
-                  type="button"
-                  variant="outline" 
-                  className="w-full border-geo-accent/30 hover:bg-geo-accent/10"
-                  onClick={handleGoogleAuth}
-                  disabled={isLoading}
-                >
-                  <Chrome className="mr-2 h-4 w-4" />
-                  Google
-                </Button>
-              </>
             )}
 
             {/* Toggle Sign Up/Sign In */}

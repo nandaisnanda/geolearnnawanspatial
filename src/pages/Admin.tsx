@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Users, BookOpen, BarChart3, Settings, Plus, Edit, Trash2, Video, FileText } from 'lucide-react';
+import { Upload, Users, BookOpen, BarChart3, Settings, Plus, Edit, Trash2, Video, FileText, AlertTriangle } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import Header from '@/components/Header';
 
 const Admin = () => {
@@ -181,6 +181,39 @@ const Admin = () => {
       toast({
         title: "Course Deleted",
         description: "The course has been removed successfully.",
+      });
+    }
+  });
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      // First delete the user's profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (profileError) throw profileError;
+
+      // Then delete from auth.users (requires admin service role key)
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (authError) throw authError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({
+        title: "User Deleted",
+        description: "The user account has been permanently deleted.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete user account. This requires admin privileges.",
+        variant: "destructive",
       });
     }
   });
@@ -587,7 +620,7 @@ const Admin = () => {
           </Card>
         </div>
 
-        {/* User Management */}
+        {/* User Management with Delete Functionality */}
         <Card className="glass-effect glow-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -628,6 +661,36 @@ const Admin = () => {
                           <Button size="sm" variant="ghost">
                             <Settings className="h-4 w-4" />
                           </Button>
+                          {user.role !== 'admin' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="flex items-center gap-2">
+                                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                                    Delete User Account
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to permanently delete the account for{' '}
+                                    <strong>{user.full_name || user.username}</strong>? This action cannot be undone and will remove all their data.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteUserMutation.mutate(user.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Delete Account
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </div>
                       </td>
                     </tr>
