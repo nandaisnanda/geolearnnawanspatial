@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +14,10 @@ interface Discussion {
   content: string;
   created_at: string;
   user_id: string;
-  parent_id?: string;
+  course_id: string;
+  parent_id?: string | null;
   profiles: {
+    id: string;
     username: string;
     full_name: string;
   } | null;
