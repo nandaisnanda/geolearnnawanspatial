@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,9 +66,9 @@ const CourseDiscussions: React.FC<CourseDiscussionsProps> = ({ courseId }) => {
       
       // Combine discussions with profiles and organize replies
       const discussionsWithProfiles = discussionsData.map(discussion => ({
-        ...discussion,
+        ...discussion, // This preserves all original fields including parent_id
         profiles: profilesData.find(profile => profile.id === discussion.user_id) || null,
-        replies: []
+        replies: [] as Discussion[]
       }));
       
       // Organize replies under parent comments
