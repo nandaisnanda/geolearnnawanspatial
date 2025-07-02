@@ -112,6 +112,7 @@ export type Database = {
           course_id: string | null
           created_at: string | null
           id: string
+          parent_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -119,6 +120,7 @@ export type Database = {
           course_id?: string | null
           created_at?: string | null
           id?: string
+          parent_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -126,6 +128,7 @@ export type Database = {
           course_id?: string | null
           created_at?: string | null
           id?: string
+          parent_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -134,6 +137,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_discussions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "course_discussions"
             referencedColumns: ["id"]
           },
           {
