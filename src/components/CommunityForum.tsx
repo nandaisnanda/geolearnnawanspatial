@@ -25,7 +25,7 @@ interface Post {
   profiles: {
     username: string;
     full_name: string;
-  };
+  } | null;
 }
 
 interface Reply {
@@ -36,7 +36,7 @@ interface Reply {
   profiles: {
     username: string;
     full_name: string;
-  };
+  } | null;
 }
 
 const CommunityForum = () => {
@@ -61,7 +61,7 @@ const CommunityForum = () => {
         .from('community_posts')
         .select(`
           *,
-          profiles (username, full_name)
+          profiles!community_posts_user_id_fkey (username, full_name)
         `)
         .order('created_at', { ascending: false });
       
@@ -80,7 +80,7 @@ const CommunityForum = () => {
         .from('community_replies')
         .select(`
           *,
-          profiles (username, full_name)
+          profiles!community_replies_user_id_fkey (username, full_name)
         `)
         .eq('post_id', selectedPost)
         .order('created_at', { ascending: true });
