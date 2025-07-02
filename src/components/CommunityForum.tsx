@@ -24,7 +24,7 @@ interface Post {
   profiles: {
     username: string;
     full_name: string;
-  } | null;
+  }[] | null;
 }
 
 interface Reply {
@@ -35,7 +35,7 @@ interface Reply {
   profiles: {
     username: string;
     full_name: string;
-  } | null;
+  }[] | null;
 }
 
 const CommunityForum = () => {
@@ -293,6 +293,12 @@ const CommunityForum = () => {
     likeMutation.mutate(postId);
   };
 
+  const getProfileDisplay = (profiles: { username: string; full_name: string; }[] | null) => {
+    if (!profiles || profiles.length === 0) return 'Anonymous';
+    const profile = profiles[0];
+    return profile.full_name || profile.username || 'Anonymous';
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -395,7 +401,7 @@ const CommunityForum = () => {
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-geo-accent">
-                      {post.profiles?.full_name || post.profiles?.username || 'Anonymous'}
+                      {getProfileDisplay(post.profiles)}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {new Date(post.created_at).toLocaleDateString()}
@@ -462,7 +468,7 @@ const CommunityForum = () => {
                           <div key={reply.id} className="bg-geo-dark/20 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="font-medium text-geo-accent text-sm">
-                                {reply.profiles?.full_name || reply.profiles?.username || 'Anonymous'}
+                                {getProfileDisplay(reply.profiles)}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {new Date(reply.created_at).toLocaleDateString()}
