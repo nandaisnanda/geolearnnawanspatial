@@ -32,7 +32,7 @@ interface Reply {
   content: string;
   created_at: string;
   user_id: string;
-  profiles: {
+  profiles?: {
     username: string;
     full_name: string;
   }[] | null;
@@ -69,23 +69,38 @@ const CommunityForum = () => {
     }
   });
 
-  // Fetch replies for selected post
+  // Fetch replies for selected post - simplified query without profiles join
   const { data: replies = [] } = useQuery({
     queryKey: ['community-replies', selectedPost],
     queryFn: async () => {
       if (!selectedPost) return [];
       
-      const { data, error } = await supabase
+      // First get the replies
+      const { data: repliesData, error: repliesError } = await supabase
         .from('community_replies')
-        .select(`
-          *,
-          profiles (username, full_name)
-        `)
+        .select('*')
         .eq('post_id', selectedPost)
         .order('created_at', { ascending: true });
       
-      if (error) throw error;
-      return data as Reply[];
+      if (repliesError) throw repliesError;
+      
+      // Then get the profiles for each reply
+      const repliesWithProfiles = await Promise.all(
+        (repliesData || []).map(async (reply) => {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username, full_name')
+            .eq('id', reply.user_id)
+            .single();
+          
+          return {
+            ...reply,
+            profiles: profileData ? [profileData] : null
+          };
+        })
+      );
+      
+      return repliesWithProfiles as Reply[];
     },
     enabled: !!selectedPost
   });
