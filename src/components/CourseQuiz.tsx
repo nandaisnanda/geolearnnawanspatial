@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,7 @@ interface Quiz {
 }
 
 interface CourseQuizProps {
-  courseId: string;
+  courseId?: string;
 }
 
 const CourseQuiz: React.FC<CourseQuizProps> = ({ courseId }) => {
@@ -45,6 +44,8 @@ const CourseQuiz: React.FC<CourseQuizProps> = ({ courseId }) => {
   const { data: quiz, isLoading } = useQuery({
     queryKey: ['quiz', courseId],
     queryFn: async (): Promise<Quiz | null> => {
+      if (!courseId) return null;
+      
       const { data, error } = await supabase
         .from('quizzes')
         .select(`
@@ -180,6 +181,16 @@ const CourseQuiz: React.FC<CourseQuizProps> = ({ courseId }) => {
       <Card className="glass-effect glow-border">
         <CardContent className="p-6">
           <p className="text-center text-muted-foreground">Loading quiz...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!courseId) {
+    return (
+      <Card className="glass-effect glow-border">
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">Please select a course to take a quiz.</p>
         </CardContent>
       </Card>
     );

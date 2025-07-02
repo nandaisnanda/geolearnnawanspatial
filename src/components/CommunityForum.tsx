@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,7 +60,7 @@ const CommunityForum = () => {
         .from('community_posts')
         .select(`
           *,
-          profiles!community_posts_user_id_fkey (username, full_name)
+          profiles (username, full_name)
         `)
         .order('created_at', { ascending: false });
       
@@ -80,7 +79,7 @@ const CommunityForum = () => {
         .from('community_replies')
         .select(`
           *,
-          profiles!community_replies_user_id_fkey (username, full_name)
+          profiles (username, full_name)
         `)
         .eq('post_id', selectedPost)
         .order('created_at', { ascending: true });
