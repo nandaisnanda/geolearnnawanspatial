@@ -1,32 +1,30 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Clock, DollarSign, Users, Briefcase, Send } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { MapPin, Clock, DollarSign, Users, Upload, FileText } from 'lucide-react';
 
 const Careers = () => {
   const { toast } = useToast();
-  const [selectedJob, setSelectedJob] = useState<string>('');
-  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const queryClient = useQueryClient();
+  const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [applicationData, setApplicationData] = useState({
-    applicant_name: '',
-    applicant_email: '',
+    full_name: '',
+    email: '',
     phone: '',
-    experience: '',
-    motivation: '',
-    expertise: ''
+    cv_file: null as File | null
   });
 
   // Fetch job vacancies
-  const { data: jobVacancies = [], isLoading } = useQuery({
+  const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['job-vacancies'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -41,16 +39,42 @@ const Careers = () => {
   });
 
   // Submit application mutation
-  const submitApplicationMutation = useMutation({
-    mutationFn: async (application: typeof applicationData & { job_id: string }) => {
-      const { data, error } = await supabase
+  const submitApplication = useMutation({
+    mutationFn: async (application: any) => {
+      let cv_url = null;
+      
+      // Upload CV if provided
+      if (applicationData.cv_file) {
+        const fileExt = applicationData.cv_file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('course-materials')
+          .upload(`cvs/${fileName}`, applicationData.cv_file);
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('course-materials')
+          .getPublicUrl(`cvs/${fileName}`);
+        
+        cv_url = publicUrl;
+      }
+
+      const { error } = await supabase
         .from('job_applications')
-        .insert(application)
-        .select()
-        .single();
+        .insert({
+          job_id: selectedJob,
+          applicant_name: applicationData.full_name,
+          applicant_email: applicationData.email,
+          phone: applicationData.phone,
+          resume_url: cv_url,
+          experience: 'Not specified',
+          motivation: 'Application submitted via career form',
+          expertise: 'To be evaluated'
+        });
       
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       toast({
@@ -58,33 +82,40 @@ const Careers = () => {
         description: "Thank you for your application. We'll review it and get back to you soon.",
       });
       setApplicationData({
-        applicant_name: '',
-        applicant_email: '',
+        full_name: '',
+        email: '',
         phone: '',
-        experience: '',
-        motivation: '',
-        expertise: ''
+        cv_file: null
       });
-      setShowApplicationForm(false);
-      setSelectedJob('');
+      setSelectedJob(null);
+      queryClient.invalidateQueries({ queryKey: ['job-applications'] });
     },
     onError: (error) => {
-      console.error('Error submitting application:', error);
+      console.error('Application error:', error);
       toast({
-        title: "Submission Failed",
+        title: "Application Failed",
         description: "There was an error submitting your application. Please try again.",
         variant: "destructive",
       });
     }
   });
 
-  const handleApplyNow = (jobId: string) => {
-    setSelectedJob(jobId);
-    setShowApplicationForm(true);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setApplicationData(prev => ({ ...prev, cv_file: file }));
+    } else {
+      toast({
+        title: "Invalid File",
+        description: "Please upload a PDF file only.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSubmitApplication = () => {
-    if (!applicationData.applicant_name || !applicationData.applicant_email || !applicationData.experience || !applicationData.motivation || !applicationData.expertise) {
+  const handleSubmitApplication = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJob || !applicationData.full_name || !applicationData.email) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -92,229 +123,178 @@ const Careers = () => {
       });
       return;
     }
-
-    submitApplicationMutation.mutate({
-      ...applicationData,
-      job_id: selectedJob
-    });
+    submitApplication.mutate(applicationData);
   };
 
-  const getJobTypeColor = (type: string) => {
-    const colors = {
-      'full-time': 'bg-green-500/10 text-green-500 border-green-500/30',
-      'part-time': 'bg-blue-500/10 text-blue-500 border-blue-500/30',
-      'contract': 'bg-orange-500/10 text-orange-500 border-orange-500/30',
-      'remote': 'bg-purple-500/10 text-purple-500 border-purple-500/30'
-    };
-    return colors[type as keyof typeof colors] || 'bg-geo-accent/10 text-geo-accent border-geo-accent/30';
+  const getDifficultyColor = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'entry': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'mid': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'senior': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default: return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    }
   };
-
-  const getExperienceColor = (level: string) => {
-    const colors = {
-      'entry-level': 'bg-teal-500/10 text-teal-500 border-teal-500/30',
-      'mid-level': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
-      'senior-level': 'bg-red-500/10 text-red-500 border-red-500/30'
-    };
-    return colors[level as keyof typeof colors] || 'bg-geo-accent/10 text-geo-accent border-geo-accent/30';
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-geo-accent"></div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-geo-primary via-background to-geo-secondary">
       <Header />
       
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-geo-highlight to-geo-accent bg-clip-text text-transparent">
-            Career Opportunities
+            Join Our Team
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join our team and help shape the future of GIS education. We're looking for passionate individuals to grow with us.
+            Shape the future of geospatial technology and education with our innovative team
           </p>
         </div>
 
-        {/* Job Application Form */}
-        {showApplicationForm && (
-          <Card className="glass-effect glow-border mb-8">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-geo-accent">Job Application Form</CardTitle>
-              <p className="text-muted-foreground">Please fill out all required fields to submit your application.</p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Full Name *</label>
-                  <Input
-                    placeholder="Enter your full name"
-                    value={applicationData.applicant_name}
-                    onChange={(e) => setApplicationData({ ...applicationData, applicant_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Email Address *</label>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={applicationData.applicant_email}
-                    onChange={(e) => setApplicationData({ ...applicationData, applicant_email: e.target.value })}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Phone Number</label>
-                <Input
-                  placeholder="Enter your phone number"
-                  value={applicationData.phone}
-                  onChange={(e) => setApplicationData({ ...applicationData, phone: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Work Experience *</label>
-                <Textarea
-                  placeholder="Describe your relevant work experience..."
-                  value={applicationData.experience}
-                  onChange={(e) => setApplicationData({ ...applicationData, experience: e.target.value })}
-                  className="min-h-24"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Motivation *</label>
-                <Textarea
-                  placeholder="Why do you want to work with us? What motivates you?"
-                  value={applicationData.motivation}
-                  onChange={(e) => setApplicationData({ ...applicationData, motivation: e.target.value })}
-                  className="min-h-24"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Technical Expertise *</label>
-                <Textarea
-                  placeholder="Describe your technical skills and expertise relevant to this position..."
-                  value={applicationData.expertise}
-                  onChange={(e) => setApplicationData({ ...applicationData, expertise: e.target.value })}
-                  className="min-h-24"
-                />
-              </div>
-
-              <div className="flex gap-4 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowApplicationForm(false);
-                    setSelectedJob('');
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmitApplication}
-                  disabled={submitApplicationMutation.isPending}
-                  className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  {submitApplicationMutation.isPending ? 'Submitting...' : 'Submit Application'}
-                </Button>
-              </div>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Loading positions...</p>
+          </div>
+        ) : jobs.length === 0 ? (
+          <Card className="glass-effect glow-border max-w-2xl mx-auto">
+            <CardContent className="p-12 text-center">
+              <div className="text-6xl mb-6">💼</div>
+              <h3 className="text-xl font-semibold mb-4">No Open Positions</h3>
+              <p className="text-muted-foreground">
+                We don't have any open positions at the moment, but we're always looking for talented individuals!
+              </p>
             </CardContent>
           </Card>
-        )}
-
-        {/* Job Vacancies */}
-        <div className="space-y-6">
-          {jobVacancies.map((job) => (
-            <Card key={job.id} className="glass-effect glow-border hover:scale-105 transition-transform">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold text-geo-accent mb-2">{job.title}</CardTitle>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <Badge className={getJobTypeColor(job.job_type)}>
-                        <Briefcase className="h-3 w-3 mr-1" />
-                        {job.job_type}
-                      </Badge>
-                      <Badge className={getExperienceColor(job.experience_level)}>
-                        <Users className="h-3 w-3 mr-1" />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Job Listings */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold mb-6">Open Positions</h2>
+              {jobs.map((job) => (
+                <Card key={job.id} className="glass-effect glow-border hover:shadow-xl transition-all duration-300">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-xl text-geo-highlight">{job.title}</CardTitle>
+                      <Badge className={getDifficultyColor(job.experience_level)}>
                         {job.experience_level}
                       </Badge>
-                      {job.location && (
-                        <Badge variant="outline">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {job.location}
-                        </Badge>
-                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {job.location}
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {job.job_type}
+                      </div>
                       {job.salary_range && (
-                        <Badge variant="outline">
-                          <DollarSign className="h-3 w-3 mr-1" />
+                        <div className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-1" />
                           {job.salary_range}
-                        </Badge>
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <Button
-                    onClick={() => handleApplyNow(job.id)}
-                    className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold"
-                  >
-                    Apply Now
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Job Description</h4>
-                    <p className="text-muted-foreground">{job.description}</p>
-                  </div>
-                  
-                  {job.requirements && job.requirements.length > 0 && (
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4">{job.description}</p>
+                    {job.requirements && job.requirements.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-semibold mb-2">Requirements:</h4>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          {job.requirements.map((req, index) => (
+                            <li key={index}>{req}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => setSelectedJob(job.id)}
+                      className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black"
+                    >
+                      Apply Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Application Form */}
+            {selectedJob && (
+              <Card className="glass-effect glow-border sticky top-8">
+                <CardHeader>
+                  <CardTitle className="text-xl text-geo-accent">Apply for Position</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmitApplication} className="space-y-4">
                     <div>
-                      <h4 className="font-semibold mb-2">Requirements</h4>
-                      <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                        {job.requirements.map((requirement, index) => (
-                          <li key={index}>{requirement}</li>
-                        ))}
-                      </ul>
+                      <Label htmlFor="full_name">Full Name *</Label>
+                      <Input
+                        id="full_name"
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={applicationData.full_name}
+                        onChange={(e) => setApplicationData(prev => ({ ...prev, full_name: e.target.value }))}
+                        required
+                        className="mt-1"
+                      />
                     </div>
-                  )}
 
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Posted on {new Date(job.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <div>
+                      <Label htmlFor="email">Email Address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={applicationData.email}
+                        onChange={(e) => setApplicationData(prev => ({ ...prev, email: e.target.value }))}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
 
-          {jobVacancies.length === 0 && (
-            <Card className="glass-effect glow-border">
-              <CardContent className="text-center py-12">
-                <Briefcase className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Open Positions</h3>
-                <p className="text-muted-foreground">
-                  We don't have any open positions at the moment, but we're always looking for talented individuals. 
-                  Check back soon or reach out to us directly.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        value={applicationData.phone}
+                        onChange={(e) => setApplicationData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="cv">CV/Resume (PDF)</Label>
+                      <div className="mt-1">
+                        <Input
+                          id="cv"
+                          type="file"
+                          accept=".pdf"
+                          onChange={handleFileChange}
+                          className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-geo-accent/10 file:text-geo-accent hover:file:bg-geo-accent/20"
+                        />
+                        {applicationData.cv_file && (
+                          <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4 mr-2" />
+                            {applicationData.cv_file.name}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={submitApplication.isPending}
+                      className="w-full bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black"
+                    >
+                      {submitApplication.isPending ? 'Submitting...' : 'Submit Application'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
 
       <Footer />
