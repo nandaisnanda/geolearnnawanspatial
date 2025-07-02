@@ -21,7 +21,7 @@ interface Post {
   downvotes_count: number;
   created_at: string;
   user_id: string;
-  profiles: {
+  profiles?: {
     username: string;
     full_name: string;
   }[] | null;
@@ -35,7 +35,7 @@ interface Reply {
   profiles?: {
     username: string;
     full_name: string;
-  }[] | null;
+  } | null;
 }
 
 const CommunityForum = () => {
@@ -69,13 +69,12 @@ const CommunityForum = () => {
     }
   });
 
-  // Fetch replies for selected post - simplified query without profiles join
+  // Fetch replies for selected post
   const { data: replies = [] } = useQuery({
     queryKey: ['community-replies', selectedPost],
     queryFn: async () => {
       if (!selectedPost) return [];
       
-      // First get the replies
       const { data: repliesData, error: repliesError } = await supabase
         .from('community_replies')
         .select('*')
@@ -84,18 +83,18 @@ const CommunityForum = () => {
       
       if (repliesError) throw repliesError;
       
-      // Then get the profiles for each reply
+      // Get profiles for each reply
       const repliesWithProfiles = await Promise.all(
         (repliesData || []).map(async (reply) => {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('username, full_name')
             .eq('id', reply.user_id)
-            .single();
+            .maybeSingle();
           
           return {
             ...reply,
-            profiles: profileData ? [profileData] : null
+            profiles: profileData
           };
         })
       );
@@ -163,24 +162,21 @@ const CommunityForum = () => {
   // Vote mutation
   const voteMutation = useMutation({
     mutationFn: async ({ postId, voteType }: { postId: string; voteType: 'upvote' | 'downvote' }) => {
-      // First check if user already voted
       const { data: existingVote } = await supabase
         .from('community_votes')
         .select('*')
         .eq('post_id', postId)
         .eq('user_id', profile?.id)
-        .single();
+        .maybeSingle();
 
       if (existingVote) {
         if (existingVote.vote_type === voteType) {
-          // Remove vote if clicking same button
           const { error } = await supabase
             .from('community_votes')
             .delete()
             .eq('id', existingVote.id);
           if (error) throw error;
         } else {
-          // Update vote type
           const { error } = await supabase
             .from('community_votes')
             .update({ vote_type: voteType })
@@ -188,7 +184,6 @@ const CommunityForum = () => {
           if (error) throw error;
         }
       } else {
-        // Create new vote
         const { error } = await supabase
           .from('community_votes')
           .insert({
@@ -207,23 +202,20 @@ const CommunityForum = () => {
   // Like mutation
   const likeMutation = useMutation({
     mutationFn: async (postId: string) => {
-      // Check if already liked
       const { data: existingLike } = await supabase
         .from('community_likes')
         .select('*')
         .eq('post_id', postId)
         .eq('user_id', profile?.id)
-        .single();
+        .maybeSingle();
 
       if (existingLike) {
-        // Remove like
         const { error } = await supabase
           .from('community_likes')
           .delete()
           .eq('id', existingLike.id);
         if (error) throw error;
       } else {
-        // Add like
         const { error } = await supabase
           .from('community_likes')
           .insert({
@@ -308,10 +300,14 @@ const CommunityForum = () => {
     likeMutation.mutate(postId);
   };
 
-  const getProfileDisplay = (profiles: { username: string; full_name: string; }[] | null) => {
-    if (!profiles || profiles.length === 0) return 'Anonymous';
-    const profile = profiles[0];
-    return profile.full_name || profile.username || 'Anonymous';
+  const getProfileDisplay = (profiles: { username: string; full_name: string; }[] | { username: string; full_name: string; } | null | undefined) => {
+    if (!profiles) return 'Anonymous';
+    if (Array.isArray(profiles)) {
+      if (profiles.length === 0) return 'Anonymous';
+      const profile = profiles[0];
+      return profile.full_name || profile.username || 'Anonymous';
+    }
+    return profiles.full_name || profiles.username || 'Anonymous';
   };
 
   if (isLoading) {
