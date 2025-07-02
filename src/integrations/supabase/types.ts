@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      blog_posts: {
+        Row: {
+          author_id: string | null
+          category: string | null
+          content: string
+          created_at: string | null
+          excerpt: string | null
+          featured: boolean | null
+          id: string
+          published: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          category?: string | null
+          content: string
+          created_at?: string | null
+          excerpt?: string | null
+          featured?: boolean | null
+          id?: string
+          published?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          excerpt?: string | null
+          featured?: boolean | null
+          id?: string
+          published?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_likes: {
         Row: {
           created_at: string | null
@@ -42,34 +89,40 @@ export type Database = {
         Row: {
           content: string
           created_at: string | null
+          downvotes_count: number | null
           id: string
           likes_count: number | null
           replies_count: number | null
           title: string | null
           topic_tag: string | null
           updated_at: string | null
+          upvotes_count: number | null
           user_id: string | null
         }
         Insert: {
           content: string
           created_at?: string | null
+          downvotes_count?: number | null
           id?: string
           likes_count?: number | null
           replies_count?: number | null
           title?: string | null
           topic_tag?: string | null
           updated_at?: string | null
+          upvotes_count?: number | null
           user_id?: string | null
         }
         Update: {
           content?: string
           created_at?: string | null
+          downvotes_count?: number | null
           id?: string
           likes_count?: number | null
           replies_count?: number | null
           title?: string | null
           topic_tag?: string | null
           updated_at?: string | null
+          upvotes_count?: number | null
           user_id?: string | null
         }
         Relationships: []
@@ -102,6 +155,45 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string | null
+          user_id: string | null
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
+          user_id?: string | null
+          vote_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
+          user_id?: string | null
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -194,6 +286,98 @@ export type Database = {
         }
         Relationships: []
       }
+      job_applications: {
+        Row: {
+          applicant_email: string
+          applicant_name: string
+          applied_at: string | null
+          experience: string
+          expertise: string
+          id: string
+          job_id: string | null
+          motivation: string
+          phone: string | null
+          resume_url: string | null
+          status: string | null
+        }
+        Insert: {
+          applicant_email: string
+          applicant_name: string
+          applied_at?: string | null
+          experience: string
+          expertise: string
+          id?: string
+          job_id?: string | null
+          motivation: string
+          phone?: string | null
+          resume_url?: string | null
+          status?: string | null
+        }
+        Update: {
+          applicant_email?: string
+          applicant_name?: string
+          applied_at?: string | null
+          experience?: string
+          expertise?: string
+          id?: string
+          job_id?: string | null
+          motivation?: string
+          phone?: string | null
+          resume_url?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_vacancies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_vacancies: {
+        Row: {
+          created_at: string | null
+          description: string
+          experience_level: string | null
+          id: string
+          is_published: boolean | null
+          job_type: string | null
+          location: string | null
+          requirements: string[] | null
+          salary_range: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          experience_level?: string | null
+          id?: string
+          is_published?: boolean | null
+          job_type?: string | null
+          location?: string | null
+          requirements?: string[] | null
+          salary_range?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          experience_level?: string | null
+          id?: string
+          is_published?: boolean | null
+          job_type?: string | null
+          location?: string | null
+          requirements?: string[] | null
+          salary_range?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       lessons: {
         Row: {
           course_id: string | null
@@ -273,6 +457,41 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      quiz_leaderboard: {
+        Row: {
+          average_score: number | null
+          id: string
+          last_updated: string | null
+          quizzes_completed: number | null
+          total_score: number | null
+          user_id: string | null
+        }
+        Insert: {
+          average_score?: number | null
+          id?: string
+          last_updated?: string | null
+          quizzes_completed?: number | null
+          total_score?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          average_score?: number | null
+          id?: string
+          last_updated?: string | null
+          quizzes_completed?: number | null
+          total_score?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_leaderboard_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_questions: {
         Row: {
@@ -492,6 +711,10 @@ export type Database = {
     Functions: {
       auto_enroll_user: {
         Args: { course_id: string }
+        Returns: undefined
+      }
+      update_leaderboard_score: {
+        Args: { p_user_id: string; p_score: number; p_percentage: number }
         Returns: undefined
       }
     }

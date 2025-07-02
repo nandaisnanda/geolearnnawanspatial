@@ -1,73 +1,94 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Plus } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Plus, MessageCircle, Heart, ArrowUp, ArrowDown, Reply, Send } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Post {
   id: string;
-  title?: string;
+  title: string | null;
   content: string;
-  topic_tag?: string;
+  topic_tag: string | null;
   likes_count: number;
   replies_count: number;
+  upvotes_count: number;
+  downvotes_count: number;
   created_at: string;
   user_id: string;
-  profiles?: {
+  profiles: {
     username: string;
     full_name: string;
-  } | null;
+  };
+}
+
+interface Reply {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  profiles: {
+    username: string;
+    full_name: string;
+  };
 }
 
 const CommunityForum = () => {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
   const [showNewPost, setShowNewPost] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<string>('');
+  const [replyContent, setReplyContent] = useState('');
   const [newPost, setNewPost] = useState({
     title: '',
     content: '',
     topic_tag: 'general'
   });
 
-  // Fetch posts with profiles
+  // Fetch community posts with profiles
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ['community-posts'],
     queryFn: async () => {
-      // First fetch posts
-      const { data: postsData, error: postsError } = await supabase
+      const { data, error } = await supabase
         .from('community_posts')
-        .select('*')
+        .select(`
+          *,
+          profiles (username, full_name)
+        `)
         .order('created_at', { ascending: false });
       
-      if (postsError) throw postsError;
+      if (error) throw error;
+      return data as Post[];
+    }
+  });
+
+  // Fetch replies for selected post
+  const { data: replies = [] } = useQuery({
+    queryKey: ['community-replies', selectedPost],
+    queryFn: async () => {
+      if (!selectedPost) return [];
       
-      // Then fetch profiles for each post
-      const userIds = [...new Set(postsData.map(post => post.user_id).filter(Boolean))];
+      const { data, error } = await supabase
+        .from('community_replies')
+        .select(`
+          *,
+          profiles (username, full_name)
+        `)
+        .eq('post_id', selectedPost)
+        .order('created_at', { ascending: true });
       
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, full_name')
-        .in('id', userIds);
-      
-      if (profilesError) throw profilesError;
-      
-      // Combine posts with profiles
-      const postsWithProfiles = postsData.map(post => ({
-        ...post,
-        profiles: profilesData.find(profile => profile.id === post.user_id) || null
-      }));
-      
-      return postsWithProfiles as Post[];
+      if (error) throw error;
+      return data as Reply[];
     },
-    enabled: !!user
+    enabled: !!selectedPost
   });
 
   // Create post mutation
@@ -76,10 +97,10 @@ const CommunityForum = () => {
       const { data, error } = await supabase
         .from('community_posts')
         .insert({
-          title: postData.title || null,
+          title: postData.title,
           content: postData.content,
           topic_tag: postData.topic_tag,
-          user_id: user?.id
+          user_id: profile?.id
         })
         .select()
         .single();
@@ -95,43 +116,105 @@ const CommunityForum = () => {
         title: "Post Created!",
         description: "Your post has been shared with the community.",
       });
+    }
+  });
+
+  // Create reply mutation
+  const createReplyMutation = useMutation({
+    mutationFn: async ({ postId, content }: { postId: string; content: string }) => {
+      const { data, error } = await supabase
+        .from('community_replies')
+        .insert({
+          post_id: postId,
+          content: content,
+          user_id: profile?.id
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
     },
-    onError: (error) => {
-      console.error('Error creating post:', error);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community-replies', selectedPost] });
+      queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+      setReplyContent('');
       toast({
-        title: "Error",
-        description: "Failed to create post. Please try again.",
-        variant: "destructive",
+        title: "Reply Posted!",
+        description: "Your reply has been added to the discussion.",
       });
     }
   });
 
-  // Like post mutation
-  const likePostMutation = useMutation({
+  // Vote mutation
+  const voteMutation = useMutation({
+    mutationFn: async ({ postId, voteType }: { postId: string; voteType: 'upvote' | 'downvote' }) => {
+      // First check if user already voted
+      const { data: existingVote } = await supabase
+        .from('community_votes')
+        .select('*')
+        .eq('post_id', postId)
+        .eq('user_id', profile?.id)
+        .single();
+
+      if (existingVote) {
+        if (existingVote.vote_type === voteType) {
+          // Remove vote if clicking same button
+          const { error } = await supabase
+            .from('community_votes')
+            .delete()
+            .eq('id', existingVote.id);
+          if (error) throw error;
+        } else {
+          // Update vote type
+          const { error } = await supabase
+            .from('community_votes')
+            .update({ vote_type: voteType })
+            .eq('id', existingVote.id);
+          if (error) throw error;
+        }
+      } else {
+        // Create new vote
+        const { error } = await supabase
+          .from('community_votes')
+          .insert({
+            post_id: postId,
+            user_id: profile?.id,
+            vote_type: voteType
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+    }
+  });
+
+  // Like mutation
+  const likeMutation = useMutation({
     mutationFn: async (postId: string) => {
       // Check if already liked
       const { data: existingLike } = await supabase
         .from('community_likes')
-        .select('id')
+        .select('*')
         .eq('post_id', postId)
-        .eq('user_id', user?.id)
+        .eq('user_id', profile?.id)
         .single();
 
       if (existingLike) {
-        // Unlike
+        // Remove like
         const { error } = await supabase
           .from('community_likes')
           .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user?.id);
+          .eq('id', existingLike.id);
         if (error) throw error;
       } else {
-        // Like
+        // Add like
         const { error } = await supabase
           .from('community_likes')
           .insert({
             post_id: postId,
-            user_id: user?.id
+            user_id: profile?.id
           });
         if (error) throw error;
       }
@@ -142,42 +225,79 @@ const CommunityForum = () => {
   });
 
   const handleCreatePost = () => {
-    if (!newPost.content.trim()) {
+    if (!profile) {
       toast({
-        title: "Content Required",
-        description: "Please add some content to your post.",
+        title: "Login Required",
+        description: "Please log in to create a post.",
         variant: "destructive",
       });
       return;
     }
+    
+    if (!newPost.content.trim()) {
+      toast({
+        title: "Content Required",
+        description: "Please enter some content for your post.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     createPostMutation.mutate(newPost);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleReply = (postId: string) => {
+    if (!profile) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to reply.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!replyContent.trim()) {
+      toast({
+        title: "Content Required",
+        description: "Please enter a reply.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createReplyMutation.mutate({ postId, content: replyContent });
   };
 
-  const getTopicColor = (tag: string) => {
-    const colors = {
-      general: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      gis: 'bg-green-500/20 text-green-400 border-green-500/30',
-      'remote-sensing': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      career: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-      help: 'bg-red-500/20 text-red-400 border-red-500/30'
-    };
-    return colors[tag as keyof typeof colors] || colors.general;
+  const handleVote = (postId: string, voteType: 'upvote' | 'downvote') => {
+    if (!profile) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to vote.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    voteMutation.mutate({ postId, voteType });
   };
 
-  if (!user) {
+  const handleLike = (postId: string) => {
+    if (!profile) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to like posts.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    likeMutation.mutate(postId);
+  };
+
+  if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Please login to view the community forum.</p>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-geo-accent"></div>
       </div>
     );
   }
@@ -188,138 +308,188 @@ const CommunityForum = () => {
       <Card className="glass-effect glow-border">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-geo-accent">Community Forum</CardTitle>
+            <CardTitle className="text-xl font-bold text-geo-accent">Community Discussion</CardTitle>
             <Button
               onClick={() => setShowNewPost(!showNewPost)}
-              className="bg-geo-accent text-black hover:bg-geo-accent/90"
+              className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold"
             >
               <Plus className="h-4 w-4 mr-2" />
               New Post
             </Button>
           </div>
         </CardHeader>
-        
         {showNewPost && (
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                placeholder="Post title (optional)"
-                value={newPost.title}
-                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-              />
+            <Input
+              placeholder="Post Title (Optional)"
+              value={newPost.title}
+              onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+            />
+            <Textarea
+              placeholder="What's on your mind? Share your thoughts with the community..."
+              value={newPost.content}
+              onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+              className="min-h-24"
+            />
+            <div className="flex items-center gap-4">
               <select 
                 className="px-3 py-2 bg-background border border-border rounded-md"
                 value={newPost.topic_tag}
                 onChange={(e) => setNewPost({ ...newPost, topic_tag: e.target.value })}
               >
                 <option value="general">General</option>
-                <option value="gis">GIS</option>
-                <option value="remote-sensing">Remote Sensing</option>
-                <option value="career">Career</option>
-                <option value="help">Help</option>
+                <option value="help">Help & Support</option>
+                <option value="discussion">Discussion</option>
+                <option value="showcase">Showcase</option>
+                <option value="question">Question</option>
               </select>
-            </div>
-            <Textarea
-              placeholder="Share your thoughts with the community..."
-              value={newPost.content}
-              onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-              rows={4}
-            />
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleCreatePost}
-                disabled={createPostMutation.isPending}
-                className="bg-geo-highlight text-black hover:bg-geo-highlight/90"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {createPostMutation.isPending ? 'Posting...' : 'Post'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowNewPost(false)}
-              >
-                Cancel
-              </Button>
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  onClick={handleCreatePost}
+                  disabled={createPostMutation.isPending}
+                  className="bg-gradient-to-r from-geo-highlight to-geo-accent hover:from-geo-highlight/90 hover:to-geo-accent/90 text-black"
+                >
+                  {createPostMutation.isPending ? 'Posting...' : 'Share Post'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNewPost(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </CardContent>
         )}
       </Card>
 
       {/* Posts List */}
-      {isLoading ? (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Loading posts...</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <Card key={post.id} className="glass-effect glow-border hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-start space-x-4">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-geo-accent/20 text-geo-accent">
-                      {post.profiles?.full_name?.[0] || post.profiles?.username?.[0] || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-geo-highlight">
-                        {post.profiles?.full_name || post.profiles?.username || 'Anonymous'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(post.created_at)}
-                      </span>
-                      {post.topic_tag && (
-                        <Badge variant="outline" className={getTopicColor(post.topic_tag)}>
-                          {post.topic_tag.replace('-', ' ')}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {post.title && (
-                      <h3 className="font-semibold text-lg text-foreground">
-                        {post.title}
-                      </h3>
-                    )}
-                    
-                    <p className="text-muted-foreground leading-relaxed">
-                      {post.content}
-                    </p>
-                    
-                    <div className="flex items-center gap-4 pt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => likePostMutation.mutate(post.id)}
-                        className="text-muted-foreground hover:text-geo-accent"
-                      >
-                        <Heart className="h-4 w-4 mr-1" />
-                        {post.likes_count}
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-geo-accent"
-                      >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        {post.replies_count}
-                      </Button>
-                    </div>
-                  </div>
+      <div className="space-y-4">
+        {posts.map((post) => (
+          <Card key={post.id} className="glass-effect glow-border">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                {/* Voting Section */}
+                <div className="flex flex-col items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleVote(post.id, 'upvote')}
+                    className="p-1 h-8 w-8 hover:bg-green-500/20"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium">
+                    {(post.upvotes_count || 0) - (post.downvotes_count || 0)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleVote(post.id, 'downvote')}
+                    className="p-1 h-8 w-8 hover:bg-red-500/20"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-          
-          {posts.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No posts yet. Be the first to start a discussion!</p>
-            </div>
-          )}
-        </div>
-      )}
+
+                {/* Post Content */}
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-geo-accent">
+                      {post.profiles?.full_name || post.profiles?.username || 'Anonymous'}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(post.created_at).toLocaleDateString()}
+                    </span>
+                    {post.topic_tag && (
+                      <Badge variant="outline" className="text-xs">
+                        {post.topic_tag}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {post.title && (
+                    <h3 className="text-lg font-semibold">{post.title}</h3>
+                  )}
+                  
+                  <p className="text-foreground">{post.content}</p>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-4 pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleLike(post.id)}
+                      className="flex items-center gap-2 hover:bg-red-500/20"
+                    >
+                      <Heart className="h-4 w-4" />
+                      {post.likes_count || 0}
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedPost(selectedPost === post.id ? '' : post.id)}
+                      className="flex items-center gap-2 hover:bg-blue-500/20"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      {post.replies_count || 0} replies
+                    </Button>
+                  </div>
+
+                  {/* Replies Section */}
+                  {selectedPost === post.id && (
+                    <div className="mt-4 space-y-4 pl-4 border-l-2 border-geo-accent/30">
+                      {/* Reply Form */}
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Write a reply..."
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          className="flex-1 min-h-16"
+                        />
+                        <Button
+                          onClick={() => handleReply(post.id)}
+                          disabled={createReplyMutation.isPending}
+                          className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {/* Replies List */}
+                      <div className="space-y-3">
+                        {replies.map((reply) => (
+                          <div key={reply.id} className="bg-geo-dark/20 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium text-geo-accent text-sm">
+                                {reply.profiles?.full_name || reply.profiles?.username || 'Anonymous'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(reply.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm">{reply.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {posts.length === 0 && (
+          <Card className="glass-effect glow-border">
+            <CardContent className="text-center py-8">
+              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No posts yet. Start the conversation!</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

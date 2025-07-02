@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Users, BookOpen, BarChart3, Settings, Plus, Edit, Trash2, Video, FileText, AlertTriangle } from 'lucide-react';
+import { Upload, Users, BookOpen, BarChart3, Settings, Plus, Edit, Trash2, Video, FileText, AlertTriangle, Briefcase, Mail } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,9 +20,18 @@ const Admin = () => {
   const queryClient = useQueryClient();
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Course management states
   const [showNewCourse, setShowNewCourse] = useState(false);
   const [showNewLesson, setShowNewLesson] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
+  
+  // Blog management states
+  const [showNewBlog, setShowNewBlog] = useState(false);
+  const [selectedBlog, setSelectedBlog] = useState<string>('');
+  
+  // Job management states
+  const [showNewJob, setShowNewJob] = useState(false);
   
   const [newCourse, setNewCourse] = useState({
     title: '',
@@ -40,7 +49,25 @@ const Admin = () => {
     order_index: 0
   });
 
-  // Fetch courses
+  const [newBlog, setNewBlog] = useState({
+    title: '',
+    excerpt: '',
+    content: '',
+    category: 'general',
+    featured: false,
+    published: false
+  });
+
+  const [newJob, setNewJob] = useState({
+    title: '',
+    description: '',
+    requirements: [] as string[],
+    location: '',
+    job_type: 'full-time',
+    salary_range: '',
+    experience_level: 'mid-level'
+  });
+
   const { data: courses = [] } = useQuery({
     queryKey: ['admin-courses'],
     queryFn: async () => {
@@ -55,7 +82,6 @@ const Admin = () => {
     enabled: !!profile?.role && profile.role === 'admin'
   });
 
-  // Fetch lessons for selected course
   const { data: lessons = [] } = useQuery({
     queryKey: ['admin-lessons', selectedCourse],
     queryFn: async () => {
@@ -73,7 +99,6 @@ const Admin = () => {
     enabled: !!selectedCourse
   });
 
-  // Fetch users
   const { data: users = [] } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
@@ -88,7 +113,54 @@ const Admin = () => {
     enabled: !!profile?.role && profile.role === 'admin'
   });
 
-  // Create course mutation
+  // Fetch blog posts
+  const { data: blogPosts = [] } = useQuery({
+    queryKey: ['admin-blogs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.role && profile.role === 'admin'
+  });
+
+  // Fetch job vacancies
+  const { data: jobVacancies = [] } = useQuery({
+    queryKey: ['admin-jobs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_vacancies')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.role && profile.role === 'admin'
+  });
+
+  // Fetch job applications
+  const { data: jobApplications = [] } = useQuery({
+    queryKey: ['admin-applications'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          job_vacancies (title)
+        `)
+        .order('applied_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.role && profile.role === 'admin'
+  });
+
   const createCourseMutation = useMutation({
     mutationFn: async (courseData: typeof newCourse) => {
       const { data, error } = await supabase
@@ -127,7 +199,6 @@ const Admin = () => {
     }
   });
 
-  // Create lesson mutation
   const createLessonMutation = useMutation({
     mutationFn: async (lessonData: typeof newLesson) => {
       const { data, error } = await supabase
@@ -165,7 +236,69 @@ const Admin = () => {
     }
   });
 
-  // Delete course mutation
+  // Blog post mutations
+  const createBlogMutation = useMutation({
+    mutationFn: async (blogData: typeof newBlog) => {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .insert({
+          title: blogData.title,
+          excerpt: blogData.excerpt,
+          content: blogData.content,
+          category: blogData.category,
+          featured: blogData.featured,
+          published: blogData.published,
+          author_id: profile?.id
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-blogs'] });
+      setNewBlog({ title: '', excerpt: '', content: '', category: 'general', featured: false, published: false });
+      setShowNewBlog(false);
+      toast({
+        title: "Blog Post Created!",
+        description: "Your blog post has been created successfully.",
+      });
+    }
+  });
+
+  // Job vacancy mutations
+  const createJobMutation = useMutation({
+    mutationFn: async (jobData: typeof newJob) => {
+      const { data, error } = await supabase
+        .from('job_vacancies')
+        .insert({
+          title: jobData.title,
+          description: jobData.description,
+          requirements: jobData.requirements,
+          location: jobData.location,
+          job_type: jobData.job_type,
+          salary_range: jobData.salary_range,
+          experience_level: jobData.experience_level,
+          is_published: true
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-jobs'] });
+      setNewJob({ title: '', description: '', requirements: [], location: '', job_type: 'full-time', salary_range: '', experience_level: 'mid-level' });
+      setShowNewJob(false);
+      toast({
+        title: "Job Vacancy Created!",
+        description: "Your job vacancy has been posted successfully.",
+      });
+    }
+  });
+
   const deleteCourseMutation = useMutation({
     mutationFn: async (courseId: string) => {
       const { error } = await supabase
@@ -185,10 +318,8 @@ const Admin = () => {
     }
   });
 
-  // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // First delete the user's profile
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
@@ -196,7 +327,6 @@ const Admin = () => {
       
       if (profileError) throw profileError;
 
-      // Then delete from auth.users (requires admin service role key)
       const { error: authError } = await supabase.auth.admin.deleteUser(userId);
       
       if (authError) throw authError;
@@ -223,9 +353,12 @@ const Admin = () => {
     totalCourses: courses.length,
     activeCourses: courses.filter(c => c.is_published).length,
     totalStudents: users.filter(u => u.role === 'user').length,
+    totalBlogs: blogPosts.length,
+    publishedBlogs: blogPosts.filter(b => b.published).length,
+    totalJobs: jobVacancies.length,
+    totalApplications: jobApplications.length
   };
 
-  // Show loading while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -237,7 +370,6 @@ const Admin = () => {
     );
   }
 
-  // Redirect if not admin
   if (!profile || profile.role !== 'admin') {
     console.log('Access denied - Profile:', profile);
     return <Navigate to="/" replace />;
@@ -267,7 +399,6 @@ const Admin = () => {
 
       const url = data.publicUrl;
 
-      // Update the appropriate form field
       if (showNewCourse) {
         setNewCourse(prev => ({ ...prev, [`${type}_url`]: url }));
       } else if (showNewLesson) {
@@ -292,30 +423,6 @@ const Admin = () => {
     }
   };
 
-  const handleCreateCourse = () => {
-    if (!newCourse.title.trim()) {
-      toast({
-        title: "Title Required",
-        description: "Please enter a course title.",
-        variant: "destructive",
-      });
-      return;
-    }
-    createCourseMutation.mutate(newCourse);
-  };
-
-  const handleCreateLesson = () => {
-    if (!newLesson.title.trim()) {
-      toast({
-        title: "Title Required",
-        description: "Please enter a lesson title.",
-        variant: "destructive",
-      });
-      return;
-    }
-    createLessonMutation.mutate(newLesson);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -326,10 +433,10 @@ const Admin = () => {
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-geo-accent to-geo-highlight bg-clip-text text-transparent">
             Admin Dashboard
           </h1>
-          <p className="text-muted-foreground">Welcome back, {profile?.full_name || profile?.username}! Manage your courses and content.</p>
+          <p className="text-muted-foreground">Welcome back, {profile?.full_name || profile?.username}! Manage your platform content and users.</p>
         </div>
 
-        {/* Stats Cards */}
+        {/* Enhanced Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="glass-effect glow-border">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -353,26 +460,26 @@ const Admin = () => {
 
           <Card className="glass-effect glow-border">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Courses</CardTitle>
-              <BarChart3 className="h-4 w-4 text-geo-accent" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Blog Posts</CardTitle>
+              <FileText className="h-4 w-4 text-geo-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-geo-accent">{stats.activeCourses}</div>
+              <div className="text-2xl font-bold text-geo-accent">{stats.publishedBlogs}/{stats.totalBlogs}</div>
             </CardContent>
           </Card>
 
           <Card className="glass-effect glow-border">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-geo-accent" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Job Applications</CardTitle>
+              <Briefcase className="h-4 w-4 text-geo-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-geo-accent">{stats.totalStudents}</div>
+              <div className="text-2xl font-bold text-geo-accent">{stats.totalApplications}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Course Management */}
+        {/* Course Management Section - keep existing code */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <Card className="glass-effect glow-border">
             <CardHeader>
@@ -453,7 +560,7 @@ const Admin = () => {
                   
                   <div className="flex gap-2">
                     <Button
-                      onClick={handleCreateCourse}
+                      onClick={() => createCourseMutation.mutate(newCourse)}
                       disabled={createCourseMutation.isPending}
                       className="bg-gradient-to-r from-geo-highlight to-geo-accent hover:from-geo-highlight/90 hover:to-geo-accent/90 text-black"
                     >
@@ -502,7 +609,7 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          {/* Lesson Management */}
+          {/* Lesson Management - keep existing code structure */}
           <Card className="glass-effect glow-border">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -577,7 +684,7 @@ const Admin = () => {
                       
                       <div className="flex gap-2">
                         <Button
-                          onClick={handleCreateLesson}
+                          onClick={() => createLessonMutation.mutate(newLesson)}
                           disabled={createLessonMutation.isPending}
                           className="bg-gradient-to-r from-geo-highlight to-geo-accent hover:from-geo-highlight/90 hover:to-geo-accent/90 text-black"
                         >
@@ -619,6 +726,260 @@ const Admin = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Blog Management Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <Card className="glass-effect glow-border">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-geo-accent" />
+                  Blog Management
+                </CardTitle>
+                <Button
+                  onClick={() => setShowNewBlog(!showNewBlog)}
+                  className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Blog Post
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* New Blog Form */}
+              {showNewBlog && (
+                <div className="space-y-4 p-4 bg-geo-dark/30 border border-geo-accent/20 rounded-lg">
+                  <Input
+                    placeholder="Blog Title"
+                    value={newBlog.title}
+                    onChange={(e) => setNewBlog({ ...newBlog, title: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Blog Excerpt"
+                    value={newBlog.excerpt}
+                    onChange={(e) => setNewBlog({ ...newBlog, excerpt: e.target.value })}
+                  />
+                  <Textarea
+                    placeholder="Blog Content"
+                    value={newBlog.content}
+                    onChange={(e) => setNewBlog({ ...newBlog, content: e.target.value })}
+                    className="min-h-32"
+                  />
+                  <div className="flex gap-4">
+                    <select 
+                      className="px-3 py-2 bg-background border border-border rounded-md"
+                      value={newBlog.category}
+                      onChange={(e) => setNewBlog({ ...newBlog, category: e.target.value })}
+                    >
+                      <option value="general">General</option>
+                      <option value="technology">Technology</option>
+                      <option value="education">Education</option>
+                      <option value="news">News</option>
+                    </select>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={newBlog.featured}
+                        onChange={(e) => setNewBlog({ ...newBlog, featured: e.target.checked })}
+                        className="rounded"
+                      />
+                      Featured
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={newBlog.published}
+                        onChange={(e) => setNewBlog({ ...newBlog, published: e.target.checked })}
+                        className="rounded"
+                      />
+                      Published
+                    </label>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => createBlogMutation.mutate(newBlog)}
+                      disabled={createBlogMutation.isPending}
+                      className="bg-gradient-to-r from-geo-highlight to-geo-accent hover:from-geo-highlight/90 hover:to-geo-accent/90 text-black"
+                    >
+                      {createBlogMutation.isPending ? 'Creating...' : 'Create Blog Post'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNewBlog(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Blog Posts List */}
+              <div className="space-y-2">
+                {blogPosts.map((blog) => (
+                  <div key={blog.id} className="flex items-center justify-between p-3 rounded-lg bg-geo-dark/30 border border-geo-accent/20">
+                    <div>
+                      <h4 className="font-medium">{blog.title}</h4>
+                      <p className="text-sm text-muted-foreground">{blog.category}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {blog.featured && <Badge variant="secondary">Featured</Badge>}
+                      <Badge variant={blog.published ? 'default' : 'outline'}>
+                        {blog.published ? 'Published' : 'Draft'}
+                      </Badge>
+                      <Button size="sm" variant="ghost">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Job Management Section */}
+          <Card className="glass-effect glow-border">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-geo-accent" />
+                  Job Vacancies
+                </CardTitle>
+                <Button
+                  onClick={() => setShowNewJob(!showNewJob)}
+                  className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black font-semibold"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Job
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* New Job Form */}
+              {showNewJob && (
+                <div className="space-y-4 p-4 bg-geo-dark/30 border border-geo-accent/20 rounded-lg">
+                  <Input
+                    placeholder="Job Title"
+                    value={newJob.title}
+                    onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
+                  />
+                  <Textarea
+                    placeholder="Job Description"
+                    value={newJob.description}
+                    onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Location"
+                    value={newJob.location}
+                    onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Salary Range"
+                    value={newJob.salary_range}
+                    onChange={(e) => setNewJob({ ...newJob, salary_range: e.target.value })}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <select 
+                      className="px-3 py-2 bg-background border border-border rounded-md"
+                      value={newJob.job_type}
+                      onChange={(e) => setNewJob({ ...newJob, job_type: e.target.value })}
+                    >
+                      <option value="full-time">Full-time</option>
+                      <option value="part-time">Part-time</option>
+                      <option value="contract">Contract</option>
+                      <option value="remote">Remote</option>
+                    </select>
+                    <select 
+                      className="px-3 py-2 bg-background border border-border rounded-md"
+                      value={newJob.experience_level}
+                      onChange={(e) => setNewJob({ ...newJob, experience_level: e.target.value })}
+                    >
+                      <option value="entry-level">Entry Level</option>
+                      <option value="mid-level">Mid Level</option>
+                      <option value="senior-level">Senior Level</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => createJobMutation.mutate(newJob)}
+                      disabled={createJobMutation.isPending}
+                      className="bg-gradient-to-r from-geo-highlight to-geo-accent hover:from-geo-highlight/90 hover:to-geo-accent/90 text-black"
+                    >
+                      {createJobMutation.isPending ? 'Creating...' : 'Create Job'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNewJob(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Job Vacancies List */}
+              <div className="space-y-2">
+                {jobVacancies.map((job) => (
+                  <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-geo-dark/30 border border-geo-accent/20">
+                    <div>
+                      <h4 className="font-medium">{job.title}</h4>
+                      <p className="text-sm text-muted-foreground">{job.location} • {job.job_type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={job.is_published ? 'default' : 'secondary'}>
+                        {job.is_published ? 'Active' : 'Draft'}
+                      </Badge>
+                      <Button size="sm" variant="ghost">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Job Applications Section */}
+        <Card className="glass-effect glow-border mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-geo-accent" />
+              Job Applications
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-geo-accent/20">
+                    <th className="text-left p-2">Applicant</th>
+                    <th className="text-left p-2">Position</th>
+                    <th className="text-left p-2">Email</th>
+                    <th className="text-left p-2">Applied</th>
+                    <th className="text-left p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobApplications.map((application: any) => (
+                    <tr key={application.id} className="border-b border-geo-accent/10">
+                      <td className="p-2">{application.applicant_name}</td>
+                      <td className="p-2">{application.job_vacancies?.title}</td>
+                      <td className="p-2">{application.applicant_email}</td>
+                      <td className="p-2">{new Date(application.applied_at).toLocaleDateString()}</td>
+                      <td className="p-2">
+                        <Badge variant={application.status === 'pending' ? 'secondary' : 'default'}>
+                          {application.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* User Management with Delete Functionality */}
         <Card className="glass-effect glow-border">

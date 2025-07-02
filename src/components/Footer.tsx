@@ -1,83 +1,120 @@
 
-import { Globe, MapPin, Layers, Map } from "lucide-react";
-import { Link } from "react-router-dom";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { MapPin, Mail, Phone, Globe, Instagram, Twitter, Linkedin } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="border-t border-geo-accent/20 bg-geo-dark/50">
-      <div className="container mx-auto px-6 py-12">
+    <footer className="bg-geo-dark text-white py-12">
+      <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Logo and Description */}
+          {/* Brand Section */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="relative">
-                <Globe className="h-6 w-6 text-geo-accent" />
-                <div className="absolute inset-0 bg-geo-accent/20 rounded-full blur-sm animate-pulse"></div>
-              </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-geo-accent to-white bg-clip-text text-transparent">
-                GeoLearn
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Empowering the next generation of GIS professionals with cutting-edge education and hands-on experience.
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-geo-highlight to-geo-accent bg-clip-text text-transparent">
+              GeoLearn
+            </h3>
+            <p className="text-gray-300">
+              Empowering the next generation of geospatial professionals through innovative education and hands-on learning experiences.
             </p>
+            <div className="flex space-x-4">
+              <a 
+                href="https://instagram.com/nawanspatial" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-geo-accent transition-colors"
+              >
+                <Instagram size={20} />
+              </a>
+              <a href="#" className="text-gray-300 hover:text-geo-accent transition-colors">
+                <Twitter size={20} />
+              </a>
+              <a href="#" className="text-gray-300 hover:text-geo-accent transition-colors">
+                <Linkedin size={20} />
+              </a>
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-geo-highlight">Quick Links</h4>
+            <div className="space-y-2">
+              <Link to="/" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Home
+              </Link>
+              <Link to="/learn" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Courses
+              </Link>
+              <Link to="/community" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Community
+              </Link>
+              <Link to="/careers" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Careers
+              </Link>
+              <Link to="/blog" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Blog
+              </Link>
+            </div>
           </div>
 
           {/* Resources */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">Resources</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/documentation" className="hover:text-geo-accent transition-colors">Documentation</Link></li>
-              <li><Link to="/tutorials" className="hover:text-geo-accent transition-colors">Tutorials</Link></li>
-              <li><Link to="/community" className="hover:text-geo-accent transition-colors">Community Forum</Link></li>
-              <li><Link to="/help-center" className="hover:text-geo-accent transition-colors">Help Center</Link></li>
-              <li><Link to="/blog" className="hover:text-geo-accent transition-colors">Blog</Link></li>
-            </ul>
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-geo-highlight">Resources</h4>
+            <div className="space-y-2">
+              <Link to="/tutorials" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Tutorials
+              </Link>
+              <Link to="/documentation" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Documentation
+              </Link>
+              <Link to="/help-center" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Help Center
+              </Link>
+              <Link to="/quiz" className="block text-gray-300 hover:text-geo-accent transition-colors">
+                Quiz
+              </Link>
+            </div>
           </div>
 
-          {/* Courses */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">Learning</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/" className="hover:text-geo-accent transition-colors">Browse Courses</Link></li>
-              <li><Link to="/learn" className="hover:text-geo-accent transition-colors">My Learning</Link></li>
-              <li><Link to="/my-progress" className="hover:text-geo-accent transition-colors">My Progress</Link></li>
-              <li><Link to="/quiz" className="hover:text-geo-accent transition-colors">Assessments</Link></li>
-              <li><Link to="/demo" className="hover:text-geo-accent transition-colors">Platform Demo</Link></li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">Company</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/about" className="hover:text-geo-accent transition-colors">About Us</Link></li>
-              <li><Link to="/careers" className="hover:text-geo-accent transition-colors">Join Our Teaching Team</Link></li>
-              <li><Link to="/contact" className="hover:text-geo-accent transition-colors">Contact</Link></li>
-              <li><Link to="/privacy-policy" className="hover:text-geo-accent transition-colors">Privacy Policy</Link></li>
-              <li><Link to="/terms-of-service" className="hover:text-geo-accent transition-colors">Terms of Service</Link></li>
-            </ul>
+          {/* Contact Info */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-geo-highlight">Contact Us</h4>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <Mail size={16} className="text-geo-accent" />
+                <span className="text-gray-300">anandashabrinagunawan@gmail.com</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Mail size={16} className="text-geo-accent" />
+                <span className="text-gray-300">nawanspatial@gmail.com</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Phone size={16} className="text-geo-accent" />
+                <span className="text-gray-300">+1 (555) 123-4567</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <MapPin size={16} className="text-geo-accent" />
+                <span className="text-gray-300">Jakarta, Indonesia</span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t border-geo-accent/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            © 2024 GeoLearn. All rights reserved.
-          </p>
-          
-          <div className="flex items-center space-x-6 mt-4 md:mt-0">
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              <span>Global Learning Platform</span>
+        <div className="border-t border-gray-700 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="text-gray-300 text-sm">
+              © 2025 GeoLearn. All rights reserved.
             </div>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <Layers className="h-4 w-4" />
-              <span>Professional Certification</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <Map className="h-4 w-4" />
-              <span>Industry Standards</span>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <Link to="/privacy-policy" className="text-gray-300 hover:text-geo-accent text-sm transition-colors">
+                Privacy Policy
+              </Link>
+              <Link to="/terms-of-service" className="text-gray-300 hover:text-geo-accent text-sm transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/contact" className="text-gray-300 hover:text-geo-accent text-sm transition-colors">
+                Contact
+              </Link>
             </div>
           </div>
         </div>
