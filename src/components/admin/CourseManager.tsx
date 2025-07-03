@@ -63,7 +63,21 @@ const CourseManager = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('courses')
-        .select('*')
+        .select(`
+          id,
+          title,
+          description,
+          difficulty_level,
+          is_published,
+          coming_soon,
+          thumbnail_url,
+          video_url,
+          pdf_url,
+          thumbnail_file_path,
+          video_file_path,
+          pdf_file_path,
+          created_at
+        `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
