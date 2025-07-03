@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
@@ -11,10 +10,10 @@ import { Button } from '@/components/ui/button';
 import { BookOpen, Users, BarChart3, Settings, FileQuestion, PenTool } from 'lucide-react';
 
 const Admin = () => {
-  const { profile, loading } = useAuth();
+  const { profile, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,7 @@ interface Post {
   downvotes_count: number;
   created_at: string;
   user_id: string;
-  profiles?: {
+  profiles: {
     username: string;
     full_name: string;
   } | null;
@@ -33,7 +32,7 @@ interface Reply {
   content: string;
   created_at: string;
   user_id: string;
-  profiles?: {
+  profiles: {
     username: string;
     full_name: string;
   } | null;
@@ -61,12 +60,17 @@ const CommunityForum = () => {
         .from('community_posts')
         .select(`
           *,
-          profiles (username, full_name)
+          profiles!community_posts_user_id_fkey (username, full_name)
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Post[];
+      
+      // Transform the data to match our Post interface
+      return data.map(post => ({
+        ...post,
+        profiles: Array.isArray(post.profiles) ? post.profiles[0] || null : post.profiles
+      })) as Post[];
     }
   });
 
@@ -80,13 +84,18 @@ const CommunityForum = () => {
         .from('community_replies')
         .select(`
           *,
-          profiles (username, full_name)
+          profiles!community_replies_user_id_fkey (username, full_name)
         `)
         .eq('post_id', selectedPost)
         .order('created_at', { ascending: true });
       
       if (error) throw error;
-      return data as Reply[];
+      
+      // Transform the data to match our Reply interface
+      return data.map(reply => ({
+        ...reply,
+        profiles: Array.isArray(reply.profiles) ? reply.profiles[0] || null : reply.profiles
+      })) as Reply[];
     },
     enabled: !!selectedPost
   });
