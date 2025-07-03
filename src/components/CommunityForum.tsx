@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ interface Post {
   profiles?: {
     username: string;
     full_name: string;
-  }[] | null;
+  } | null;
 }
 
 interface Reply {
@@ -75,31 +76,17 @@ const CommunityForum = () => {
     queryFn: async () => {
       if (!selectedPost) return [];
       
-      const { data: repliesData, error: repliesError } = await supabase
+      const { data, error } = await supabase
         .from('community_replies')
-        .select('*')
+        .select(`
+          *,
+          profiles (username, full_name)
+        `)
         .eq('post_id', selectedPost)
         .order('created_at', { ascending: true });
       
-      if (repliesError) throw repliesError;
-      
-      // Get profiles for each reply
-      const repliesWithProfiles = await Promise.all(
-        (repliesData || []).map(async (reply) => {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('username, full_name')
-            .eq('id', reply.user_id)
-            .maybeSingle();
-          
-          return {
-            ...reply,
-            profiles: profileData
-          };
-        })
-      );
-      
-      return repliesWithProfiles as Reply[];
+      if (error) throw error;
+      return data as Reply[];
     },
     enabled: !!selectedPost
   });
@@ -300,13 +287,8 @@ const CommunityForum = () => {
     likeMutation.mutate(postId);
   };
 
-  const getProfileDisplay = (profiles: { username: string; full_name: string; }[] | { username: string; full_name: string; } | null | undefined) => {
+  const getProfileDisplay = (profiles: { username: string; full_name: string; } | null | undefined) => {
     if (!profiles) return 'Anonymous';
-    if (Array.isArray(profiles)) {
-      if (profiles.length === 0) return 'Anonymous';
-      const profile = profiles[0];
-      return profile.full_name || profile.username || 'Anonymous';
-    }
     return profiles.full_name || profiles.username || 'Anonymous';
   };
 

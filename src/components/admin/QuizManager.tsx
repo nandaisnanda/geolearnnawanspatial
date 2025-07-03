@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -479,6 +478,7 @@ const QuizManager = () => {
                             type="button"
                             variant={questionForm.correct_answer === index ? "default" : "outline"}
                             onClick={() => setQuestionForm(prev => ({ ...prev, correct_answer: index }))}
+                            className={questionForm.correct_answer === index ? "bg-green-600 hover:bg-green-700" : ""}
                           >
                             {questionForm.correct_answer === index ? 'Correct' : 'Set Correct'}
                           </Button>
@@ -567,6 +567,14 @@ const QuizManager = () => {
                   </CardContent>
                 </Card>
               ))}
+              
+              {questions.length === 0 && (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <p className="text-muted-foreground">No questions added yet. Create your first question!</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </CardContent>
         </Card>

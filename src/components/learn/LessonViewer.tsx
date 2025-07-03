@@ -28,7 +28,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack }) => {
   const [videoProgress, setVideoProgress] = useState(0);
 
   const handleDownload = (url: string, filename: string) => {
-    if (!url || url === '#') {
+    if (!url || url === '#' || !url.trim()) {
       toast({
         title: "Download Demo",
         description: "This is a demo - connect to Supabase for real file downloads!",
@@ -36,9 +36,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack }) => {
       return;
     }
     
+    // Create a temporary link element and trigger download
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
+    link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -50,8 +52,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack }) => {
   };
 
   const handleVideoTimeUpdate = (currentTime: number, duration: number) => {
-    const progress = (currentTime / duration) * 100;
-    setVideoProgress(progress);
+    if (duration > 0) {
+      const progress = (currentTime / duration) * 100;
+      setVideoProgress(progress);
+    }
   };
 
   return (
@@ -73,13 +77,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack }) => {
           <Card className="glass-effect glow-border">
             <CardContent className="p-0">
               <div className="aspect-video bg-black rounded-t-lg overflow-hidden">
-                {lesson.video_url ? (
+                {lesson.video_url && lesson.video_url !== '#' && lesson.video_url.trim() ? (
                   <video
                     className="w-full h-full"
                     controls
                     onTimeUpdate={(e) => {
                       const video = e.target as HTMLVideoElement;
-                      handleVideoTimeUpdate(video.currentTime, video.duration);
+                      if (video.duration) {
+                        handleVideoTimeUpdate(video.currentTime, video.duration);
+                      }
                     }}
                   >
                     <source src={lesson.video_url} type="video/mp4" />
@@ -124,21 +130,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack }) => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* PDF Resource */}
-          {lesson.pdf_url && (
-            <Card className="glass-effect glow-border">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-geo-highlight" />
-                  Course Materials
-                </h3>
-                <div className="p-4 bg-geo-highlight/10 border border-geo-highlight/20 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">Lesson Notes.pdf</span>
-                    <Badge variant="outline">PDF</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Comprehensive notes and exercises for this lesson
-                  </p>
+          <Card className="glass-effect glow-border">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                <FileText className="h-5 w-5 text-geo-highlight" />
+                Course Materials
+              </h3>
+              <div className="p-4 bg-geo-highlight/10 border border-geo-highlight/20 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Lesson Notes.pdf</span>
+                  <Badge variant="outline">PDF</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Comprehensive notes and exercises for this lesson
+                </p>
+                {lesson.pdf_url && lesson.pdf_url !== '#' && lesson.pdf_url.trim() ? (
                   <Button
                     size="sm"
                     onClick={() => handleDownload(lesson.pdf_url, `${lesson.title}.pdf`)}
@@ -147,10 +153,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack }) => {
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    className="w-full"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    PDF Not Available
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

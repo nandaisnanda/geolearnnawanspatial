@@ -1,5 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,67 +9,53 @@ import { Calendar, User, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
+interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string | null;
+  content: string;
+  category: string | null;
+  featured: boolean | null;
+  created_at: string | null;
+  profiles?: {
+    username: string | null;
+    full_name: string | null;
+  } | null;
+}
+
 const Blog = () => {
-  const blogPosts = [
-    {
-      title: "The Future of GIS: Trends to Watch in 2024",
-      excerpt: "Explore the latest developments in Geographic Information Systems and how they're shaping various industries.",
-      author: "Dr. Sarah Johnson",
-      date: "2024-06-15",
-      category: "Industry Trends",
-      readTime: "5 min read",
-      featured: true
-    },
-    {
-      title: "Getting Started with Python for GIS Automation",
-      excerpt: "Learn how to automate repetitive GIS tasks using Python scripting and popular libraries like ArcPy and GeoPandas.",
-      author: "Mike Chen",
-      date: "2024-06-10",
-      category: "Programming",
-      readTime: "8 min read",
-      featured: false
-    },
-    {
-      title: "Remote Sensing Applications in Climate Research",
-      excerpt: "Discover how satellite imagery and remote sensing technologies are helping scientists understand climate change.",
-      author: "Dr. Maria Rodriguez",
-      date: "2024-06-05",
-      category: "Remote Sensing",
-      readTime: "6 min read",
-      featured: false
-    },
-    {
-      title: "Building Interactive Web Maps with Modern Technologies",
-      excerpt: "A comprehensive guide to creating engaging web-based mapping applications using JavaScript libraries.",
-      author: "Alex Thompson",
-      date: "2024-05-28",
-      category: "Web Development",
-      readTime: "10 min read",
-      featured: false
-    },
-    {
-      title: "Career Paths in GIS: From Analyst to Manager",
-      excerpt: "Explore different career trajectories in the GIS field and what skills you need to advance your career.",
-      author: "Jennifer Kim",
-      date: "2024-05-20",
-      category: "Career",
-      readTime: "7 min read",
-      featured: false
-    },
-    {
-      title: "Open Source GIS Tools: Alternatives to Commercial Software",
-      excerpt: "Compare popular open source GIS solutions and learn when they might be the right choice for your projects.",
-      author: "David Wilson",
-      date: "2024-05-15",
-      category: "Open Source",
-      readTime: "9 min read",
-      featured: false
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Fetch blog posts from database
+  const { data: blogPosts = [], isLoading } = useQuery({
+    queryKey: ['blog-posts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select(`
+          *,
+          profiles (username, full_name)
+        `)
+        .eq('published', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as BlogPost[];
     }
-  ];
+  });
 
-  const categories = ["All", "Industry Trends", "Programming", "Remote Sensing", "Web Development", "Career", "Open Source"];
+  const categories = ['All', ...Array.from(new Set(blogPosts.map(post => post.category).filter(Boolean)))];
 
-  const getCategoryColor = (category: string) => {
+  const filteredPosts = selectedCategory === 'All' 
+    ? blogPosts 
+    : blogPosts.filter(post => post.category === selectedCategory);
+
+  const featuredPost = filteredPosts.find(post => post.featured);
+  const regularPosts = filteredPosts.filter(post => !post.featured);
+
+  const getCategoryColor = (category: string | null) => {
+    if (!category) return "bg-geo-accent/10 text-geo-accent border-geo-accent/30";
+    
     const colors = {
       "Industry Trends": "bg-blue-500/10 text-blue-500 border-blue-500/30",
       "Programming": "bg-green-500/10 text-green-500 border-green-500/30",
@@ -79,8 +67,36 @@ const Blog = () => {
     return colors[category as keyof typeof colors] || "bg-geo-accent/10 text-geo-accent border-geo-accent/30";
   };
 
-  const featuredPost = blogPosts.find(post => post.featured);
-  const regularPosts = blogPosts.filter(post => !post.featured);
+  const getAuthorName = (profiles: { username: string | null; full_name: string | null; } | null) => {
+    if (!profiles) return 'Anonymous';
+    return profiles.full_name || profiles.username || 'Anonymous';
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'No date';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const calculateReadTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const wordCount = content.split(' ').length;
+    const readTime = Math.ceil(wordCount / wordsPerMinute);
+    return `${readTime} min read`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-geo-accent"></div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,20 +120,20 @@ const Blog = () => {
               </div>
               <div className="space-y-4">
                 <Badge className={getCategoryColor(featuredPost.category)}>
-                  Featured • {featuredPost.category}
+                  Featured • {featuredPost.category || 'General'}
                 </Badge>
                 <h2 className="text-2xl font-bold">{featuredPost.title}</h2>
-                <p className="text-muted-foreground">{featuredPost.excerpt}</p>
+                <p className="text-muted-foreground">{featuredPost.excerpt || featuredPost.content.substring(0, 150) + '...'}</p>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    {featuredPost.author}
+                    {getAuthorName(featuredPost.profiles)}
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    {new Date(featuredPost.date).toLocaleDateString()}
+                    {formatDate(featuredPost.created_at)}
                   </div>
-                  <span>{featuredPost.readTime}</span>
+                  <span>{calculateReadTime(featuredPost.content)}</span>
                 </div>
                 <Button className="bg-gradient-to-r from-geo-accent to-geo-highlight hover:from-geo-accent/90 hover:to-geo-highlight/90 text-black">
                   Read Full Article
@@ -133,9 +149,13 @@ const Blog = () => {
           {categories.map((category) => (
             <Button
               key={category}
-              variant="outline"
+              variant={selectedCategory === category ? "default" : "outline"}
               size="sm"
-              className="hover:bg-geo-accent/10 hover:text-geo-accent"
+              onClick={() => setSelectedCategory(category)}
+              className={selectedCategory === category 
+                ? "bg-geo-accent text-black hover:bg-geo-accent/90" 
+                : "hover:bg-geo-accent/10 hover:text-geo-accent"
+              }
             >
               {category}
             </Button>
@@ -143,45 +163,54 @@ const Blog = () => {
         </div>
 
         {/* Blog Posts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {regularPosts.map((post, index) => (
-            <Card key={index} className="glass-effect glow-border hover:scale-105 transition-transform">
-              <CardContent className="p-0">
-                <div className="aspect-video bg-gradient-to-br from-geo-accent/20 to-geo-highlight/20 flex items-center justify-center text-4xl">
-                  {index % 2 === 0 ? '🌍' : '📈'}
-                </div>
-                <div className="p-6">
-                  <Badge className={`${getCategoryColor(post.category)} mb-3`}>
-                    {post.category}
-                  </Badge>
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">{post.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                    {post.excerpt}
-                  </p>
-                  
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                    <div className="flex items-center gap-2">
-                      <User className="h-3 w-3" />
-                      {post.author}
+        {regularPosts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {regularPosts.map((post, index) => (
+              <Card key={post.id} className="glass-effect glow-border hover:scale-105 transition-transform">
+                <CardContent className="p-0">
+                  <div className="aspect-video bg-gradient-to-br from-geo-accent/20 to-geo-highlight/20 flex items-center justify-center text-4xl">
+                    {index % 2 === 0 ? '🌍' : '📈'}
+                  </div>
+                  <div className="p-6">
+                    <Badge className={`${getCategoryColor(post.category)} mb-3`}>
+                      {post.category || 'General'}
+                    </Badge>
+                    <h3 className="font-semibold text-lg mb-2 line-clamp-2">{post.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                      {post.excerpt || post.content.substring(0, 100) + '...'}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-3 w-3" />
+                        {getAuthorName(post.profiles)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(post.created_at)}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(post.date).toLocaleDateString()}
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{calculateReadTime(post.content)}</span>
+                      <Button size="sm" variant="ghost" className="text-geo-accent hover:text-geo-highlight">
+                        Read More
+                        <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{post.readTime}</span>
-                    <Button size="sm" variant="ghost" className="text-geo-accent hover:text-geo-highlight">
-                      Read More
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="glass-effect glow-border">
+            <CardContent className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">No Blog Posts Yet</h3>
+              <p className="text-muted-foreground">Check back soon for exciting content from our GIS experts!</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Newsletter Signup */}
         <Card className="glass-effect glow-border mt-12">
