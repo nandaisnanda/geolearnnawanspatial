@@ -24,6 +24,16 @@ interface Quiz {
   };
 }
 
+interface QuestionFromDB {
+  id: string;
+  quiz_id: string;
+  question: string;
+  options: any; // This comes as Json from database
+  correct_answer: number;
+  explanation: string;
+  order_index: number;
+}
+
 interface Question {
   id: string;
   quiz_id: string;
@@ -103,7 +113,12 @@ const QuizManager = () => {
         .order('order_index');
       
       if (error) throw error;
-      return data;
+      
+      // Transform the data to ensure options is always an array
+      return data.map((item: QuestionFromDB): Question => ({
+        ...item,
+        options: Array.isArray(item.options) ? item.options : []
+      }));
     },
     enabled: !!selectedQuizId
   });
