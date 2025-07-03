@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Upload, Video, FileText, Image } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { uploadFile, deleteFile, generateFileName } from '@/utils/fileUpload';
 
 interface Course {
   id: string;
@@ -17,9 +18,13 @@ interface Course {
   description: string | null;
   difficulty_level: string | null;
   is_published: boolean | null;
+  coming_soon: boolean | null;
   thumbnail_url: string | null;
   video_url: string | null;
   pdf_url: string | null;
+  thumbnail_file_path: string | null;
+  video_file_path: string | null;
+  pdf_file_path: string | null;
   created_at: string | null;
 }
 
@@ -28,6 +33,16 @@ const CourseManager = () => {
   const queryClient = useQueryClient();
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [isUploading, setIsUploading] = useState({
+    video: false,
+    pdf: false,
+    thumbnail: false
+  });
+  
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -35,7 +50,11 @@ const CourseManager = () => {
     video_url: '',
     pdf_url: '',
     thumbnail_url: '',
-    is_published: false
+    video_file_path: '',
+    pdf_file_path: '',
+    thumbnail_file_path: '',
+    is_published: false,
+    coming_soon: false
   });
 
   // Fetch courses
@@ -102,6 +121,36 @@ const CourseManager = () => {
     }
   });
 
+  const handleFileUpload = async (file: File, type: 'video' | 'pdf' | 'thumbnail') => {
+    setIsUploading(prev => ({ ...prev, [type]: true }));
+    
+    try {
+      const fileName = generateFileName(file.name);
+      const filePath = `${type}s/${fileName}`;
+      const publicUrl = await uploadFile(file, 'course-materials', filePath);
+      
+      setFormData(prev => ({
+        ...prev,
+        [`${type}_url`]: publicUrl,
+        [`${type}_file_path`]: filePath
+      }));
+
+      toast({
+        title: "File Uploaded!",
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} has been uploaded successfully.`,
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "There was an error uploading the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: '',
@@ -110,7 +159,11 @@ const CourseManager = () => {
       video_url: '',
       pdf_url: '',
       thumbnail_url: '',
-      is_published: false
+      video_file_path: '',
+      pdf_file_path: '',
+      thumbnail_file_path: '',
+      is_published: false,
+      coming_soon: false
     });
     setEditingCourse(null);
     setShowForm(false);
@@ -125,7 +178,11 @@ const CourseManager = () => {
       video_url: course.video_url || '',
       pdf_url: course.pdf_url || '',
       thumbnail_url: course.thumbnail_url || '',
-      is_published: course.is_published || false
+      video_file_path: course.video_file_path || '',
+      pdf_file_path: course.pdf_file_path || '',
+      thumbnail_file_path: course.thumbnail_file_path || '',
+      is_published: course.is_published || false,
+      coming_soon: course.coming_soon || false
     });
     setShowForm(true);
   };
@@ -199,31 +256,123 @@ const CourseManager = () => {
                 <SelectItem value="expert">Expert</SelectItem>
               </SelectContent>
             </Select>
-            <Input
-              placeholder="Video URL"
-              value={formData.video_url}
-              onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-            />
-            <Input
-              placeholder="PDF URL"
-              value={formData.pdf_url}
-              onChange={(e) => setFormData({ ...formData, pdf_url: e.target.value })}
-            />
-            <Input
-              placeholder="Thumbnail URL"
-              value={formData.thumbnail_url}
-              onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-            />
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_published"
-                checked={formData.is_published}
-                onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                className="rounded"
-              />
-              <label htmlFor="is_published" className="text-sm">Publish Course</label>
+
+            {/* File Upload Sections */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Video Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Course Video</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => videoInputRef.current?.click()}
+                    disabled={isUploading.video}
+                    className="flex-1"
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    {isUploading.video ? 'Uploading...' : 'Upload Video'}
+                  </Button>
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file, 'video');
+                    }}
+                  />
+                </div>
+                {formData.video_url && (
+                  <p className="text-xs text-green-600">✓ Video uploaded</p>
+                )}
+              </div>
+
+              {/* PDF Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Course PDF</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => pdfInputRef.current?.click()}
+                    disabled={isUploading.pdf}
+                    className="flex-1"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {isUploading.pdf ? 'Uploading...' : 'Upload PDF'}
+                  </Button>
+                  <input
+                    ref={pdfInputRef}
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file, 'pdf');
+                    }}
+                  />
+                </div>
+                {formData.pdf_url && (
+                  <p className="text-xs text-green-600">✓ PDF uploaded</p>
+                )}
+              </div>
+
+              {/* Thumbnail Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Thumbnail</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => thumbnailInputRef.current?.click()}
+                    disabled={isUploading.thumbnail}
+                    className="flex-1"
+                  >
+                    <Image className="h-4 w-4 mr-2" />
+                    {isUploading.thumbnail ? 'Uploading...' : 'Upload Image'}
+                  </Button>
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file, 'thumbnail');
+                    }}
+                  />
+                </div>
+                {formData.thumbnail_url && (
+                  <p className="text-xs text-green-600">✓ Thumbnail uploaded</p>
+                )}
+              </div>
             </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_published"
+                  checked={formData.is_published}
+                  onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="is_published" className="text-sm">Publish Course</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="coming_soon"
+                  checked={formData.coming_soon}
+                  onChange={(e) => setFormData({ ...formData, coming_soon: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="coming_soon" className="text-sm">Coming Soon</label>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Button
                 onClick={handleSubmit}
@@ -255,6 +404,11 @@ const CourseManager = () => {
                     <span className={`px-2 py-1 rounded text-xs ${course.is_published ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                       {course.is_published ? 'Published' : 'Draft'}
                     </span>
+                    {course.coming_soon && (
+                      <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs">
+                        Coming Soon
+                      </span>
+                    )}
                     <span className="px-2 py-1 rounded bg-geo-accent/20 text-geo-accent text-xs capitalize">
                       {course.difficulty_level}
                     </span>
@@ -263,9 +417,9 @@ const CourseManager = () => {
                     <p className="text-muted-foreground text-sm mb-2">{course.description}</p>
                   )}
                   <div className="flex gap-2 text-xs text-muted-foreground">
-                    {course.video_url && <span>📹 Video</span>}
-                    {course.pdf_url && <span>📄 PDF</span>}
-                    {course.thumbnail_url && <span>🖼️ Thumbnail</span>}
+                    {(course.video_url || course.video_file_path) && <span>📹 Video</span>}
+                    {(course.pdf_url || course.pdf_file_path) && <span>📄 PDF</span>}
+                    {(course.thumbnail_url || course.thumbnail_file_path) && <span>🖼️ Thumbnail</span>}
                   </div>
                 </div>
                 <div className="flex gap-2">

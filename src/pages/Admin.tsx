@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
@@ -5,9 +6,12 @@ import Dashboard from '@/components/Dashboard';
 import CourseManager from '@/components/admin/CourseManager';
 import QuizManager from '@/components/admin/QuizManager';
 import BlogManager from '@/components/admin/BlogManager';
+import UserManager from '@/components/admin/UserManager';
+import JobManager from '@/components/admin/JobManager';
+import Settings from '@/components/admin/Settings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Users, BarChart3, Settings, FileQuestion, PenTool } from 'lucide-react';
+import { BookOpen, Users, BarChart3, Settings as SettingsIcon, FileQuestion, PenTool, Briefcase } from 'lucide-react';
 
 const Admin = () => {
   const { profile, isLoading } = useAuth();
@@ -45,8 +49,9 @@ const Admin = () => {
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'quizzes', label: 'Quizzes', icon: FileQuestion },
     { id: 'blogs', label: 'Blog Posts', icon: PenTool },
+    { id: 'jobs', label: 'Job Vacancies', icon: Briefcase },
     { id: 'users', label: 'Users', icon: Users },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
   const renderContent = () => {
@@ -59,28 +64,12 @@ const Admin = () => {
         return <QuizManager />;
       case 'blogs':
         return <BlogManager />;
+      case 'jobs':
+        return <JobManager />;
       case 'users':
-        return (
-          <Card className="glass-effect glow-border">
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">User management features coming soon...</p>
-            </CardContent>
-          </Card>
-        );
+        return <UserManager />;
       case 'settings':
-        return (
-          <Card className="glass-effect glow-border">
-            <CardHeader>
-              <CardTitle>Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">System settings coming soon...</p>
-            </CardContent>
-          </Card>
-        );
+        return <Settings />;
       default:
         return <Dashboard />;
     }
