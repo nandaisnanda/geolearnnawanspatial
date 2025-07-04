@@ -23,6 +23,7 @@ import HelpCenter from "./pages/HelpCenter";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import Careers from "./pages/Careers";
+import Courses from "./pages/Courses";
 import Demo from "./pages/Demo";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/courses" element={<Courses />} />
             <Route path="/learn" element={<Learn />} />
             <Route path="/community" element={<Community />} />
             <Route path="/quiz" element={<Quiz />} />
