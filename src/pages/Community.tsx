@@ -2,7 +2,7 @@
 import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import CommunityForum from '@/components/CommunityForum';
+import CommunityForumOptimized from '@/components/CommunityForumOptimized';
 
 const Community = () => {
   return (
@@ -19,7 +19,7 @@ const Community = () => {
           </p>
         </div>
 
-        <CommunityForum />
+        <CommunityForumOptimized />
       </div>
 
       <Footer />

@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          created_at: string
+          criteria: Json | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          points: number | null
+        }
+        Insert: {
+          created_at?: string
+          criteria?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          points?: number | null
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          points?: number | null
+        }
+        Relationships: []
+      }
       blog_posts: {
         Row: {
           author_id: string | null
@@ -440,6 +470,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -447,6 +510,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          points: number | null
           role: string | null
           tier_level: string | null
           updated_at: string | null
@@ -458,6 +522,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          points?: number | null
           role?: string | null
           tier_level?: string | null
           updated_at?: string | null
@@ -469,6 +534,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          points?: number | null
           role?: string | null
           tier_level?: string | null
           updated_at?: string | null
@@ -641,13 +707,36 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_enrollments: {
         Row: {
           completed_at: string | null
           course_id: string | null
           enrolled_at: string | null
           id: string
+          last_accessed_at: string | null
           progress: number | null
+          quiz_completed: boolean | null
           user_id: string | null
         }
         Insert: {
@@ -655,7 +744,9 @@ export type Database = {
           course_id?: string | null
           enrolled_at?: string | null
           id?: string
+          last_accessed_at?: string | null
           progress?: number | null
+          quiz_completed?: boolean | null
           user_id?: string | null
         }
         Update: {
@@ -663,7 +754,9 @@ export type Database = {
           course_id?: string | null
           enrolled_at?: string | null
           id?: string
+          last_accessed_at?: string | null
           progress?: number | null
+          quiz_completed?: boolean | null
           user_id?: string | null
         }
         Relationships: [
@@ -729,6 +822,14 @@ export type Database = {
     Functions: {
       auto_enroll_user: {
         Args: { course_id: string }
+        Returns: undefined
+      }
+      award_achievement: {
+        Args: { p_user_id: string; p_achievement_id: string; p_points?: number }
+        Returns: undefined
+      }
+      check_quiz_achievements: {
+        Args: { p_user_id: string; p_quiz_result_id: string }
         Returns: undefined
       }
       update_leaderboard_score: {

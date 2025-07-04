@@ -3,9 +3,15 @@ import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CourseQuiz from '@/components/CourseQuiz';
+import { useCourseData } from '@/hooks/useCourseData';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from 'react';
 import QuizLeaderboard from '@/components/QuizLeaderboard';
 
 const Quiz = () => {
+  const { enrolledCourses } = useCourseData();
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-geo-primary via-background to-geo-secondary">
       <Header />
@@ -20,10 +26,28 @@ const Quiz = () => {
           </p>
         </div>
 
+        {/* Course Selection */}
+        <div className="mb-6 flex justify-center">
+          <div className="w-full max-w-md">
+            <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a course to take quiz" />
+              </SelectTrigger>
+              <SelectContent>
+                {enrolledCourses.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Quiz Section */}
           <div className="lg:col-span-2">
-            <CourseQuiz />
+            <CourseQuiz courseId={selectedCourseId} />
           </div>
           
           {/* Leaderboard Section */}

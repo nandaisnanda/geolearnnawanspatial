@@ -24,6 +24,7 @@ interface Quiz {
   description?: string;
   time_limit: number;
   passing_score: number;
+  course_id?: string;
   quiz_questions: Question[];
 }
 
@@ -106,6 +107,27 @@ const CourseQuiz: React.FC<CourseQuizProps> = ({ courseId }) => {
         .single();
 
       if (error) throw error;
+
+      // Update leaderboard and award achievements
+      await supabase.rpc('update_leaderboard_score', {
+        p_user_id: user.id,
+        p_score: score,
+        p_percentage: percentage
+      });
+
+      // Update enrollment progress if quiz is passed
+      if (percentage >= quiz.passing_score && quiz.course_id) {
+        await supabase
+          .from('user_enrollments')
+          .update({ 
+            quiz_completed: true,
+            progress: 100,
+            completed_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .eq('course_id', quiz.course_id);
+      }
+
       return { ...data, score, percentage };
     },
     onSuccess: (result) => {
@@ -114,7 +136,7 @@ const CourseQuiz: React.FC<CourseQuizProps> = ({ courseId }) => {
       toast({
         title: passed ? "Congratulations!" : "Quiz Completed",
         description: passed 
-          ? `You passed with ${result.percentage}%!` 
+          ? `You passed with ${result.percentage}%! Check your achievements!` 
           : `You scored ${result.percentage}%. Try again to improve!`,
         variant: passed ? "default" : "destructive",
       });
