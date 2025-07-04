@@ -24,6 +24,8 @@ interface Lesson {
   description: string;
   video_url: string;
   pdf_url: string;
+  video_file_path?: string;
+  pdf_file_path?: string;
   order_index: number;
   created_at: string;
 }
