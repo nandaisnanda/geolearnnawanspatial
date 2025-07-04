@@ -249,39 +249,51 @@ export type Database = {
       }
       courses: {
         Row: {
+          coming_soon: boolean | null
           created_at: string | null
           description: string | null
           difficulty_level: string | null
           id: string
           is_published: boolean | null
+          pdf_file_path: string | null
           pdf_url: string | null
+          thumbnail_file_path: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string | null
+          video_file_path: string | null
           video_url: string | null
         }
         Insert: {
+          coming_soon?: boolean | null
           created_at?: string | null
           description?: string | null
           difficulty_level?: string | null
           id?: string
           is_published?: boolean | null
+          pdf_file_path?: string | null
           pdf_url?: string | null
+          thumbnail_file_path?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
+          video_file_path?: string | null
           video_url?: string | null
         }
         Update: {
+          coming_soon?: boolean | null
           created_at?: string | null
           description?: string | null
           difficulty_level?: string | null
           id?: string
           is_published?: boolean | null
+          pdf_file_path?: string | null
           pdf_url?: string | null
+          thumbnail_file_path?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
+          video_file_path?: string | null
           video_url?: string | null
         }
         Relationships: []
@@ -385,9 +397,11 @@ export type Database = {
           description: string | null
           id: string
           order_index: number | null
+          pdf_file_path: string | null
           pdf_url: string | null
           title: string
           updated_at: string | null
+          video_file_path: string | null
           video_url: string | null
         }
         Insert: {
@@ -396,9 +410,11 @@ export type Database = {
           description?: string | null
           id?: string
           order_index?: number | null
+          pdf_file_path?: string | null
           pdf_url?: string | null
           title: string
           updated_at?: string | null
+          video_file_path?: string | null
           video_url?: string | null
         }
         Update: {
@@ -407,9 +423,11 @@ export type Database = {
           description?: string | null
           id?: string
           order_index?: number | null
+          pdf_file_path?: string | null
           pdf_url?: string | null
           title?: string
           updated_at?: string | null
+          video_file_path?: string | null
           video_url?: string | null
         }
         Relationships: [

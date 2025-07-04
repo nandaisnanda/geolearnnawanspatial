@@ -27,9 +27,13 @@ const FeaturedCourses = () => {
           description,
           difficulty_level,
           is_published,
+          coming_soon,
           thumbnail_url,
           video_url,
           pdf_url,
+          thumbnail_file_path,
+          video_file_path,
+          pdf_file_path,
           created_at
         `)
         .eq('is_published', true)
@@ -115,9 +119,10 @@ const FeaturedCourses = () => {
     return enrollment?.progress || 0;
   };
 
-  // Separate courses by type (for now, no coming soon functionality)
-  const enrolledCourses = courses.filter(course => isEnrolled(course.id));
-  const availableCourses = courses.filter(course => !isEnrolled(course.id));
+  // Separate courses by type
+  const enrolledCourses = courses.filter(course => isEnrolled(course.id) && !course.coming_soon);
+  const availableCourses = courses.filter(course => !isEnrolled(course.id) && !course.coming_soon);
+  const comingSoonCourses = courses.filter(course => course.coming_soon);
 
   if (isLoading) {
     return (
@@ -136,16 +141,16 @@ const FeaturedCourses = () => {
     );
   }
 
-  const CourseCard = ({ course, type }: { course: any; type: 'enrolled' | 'available' }) => {
+  const CourseCard = ({ course, type }: { course: any; type: 'enrolled' | 'available' | 'coming-soon' }) => {
     const progress = type === 'enrolled' ? getProgress(course.id) : 0;
     
     return (
       <Card className="glass-effect glow-border hover:shadow-2xl hover:shadow-geo-accent/20 transition-all duration-500 group overflow-hidden">
         <div className="relative">
           <div className="h-48 bg-gradient-to-br from-geo-accent/20 to-geo-highlight/20 flex items-center justify-center text-6xl relative overflow-hidden">
-            {course.thumbnail_url ? (
+            {course.thumbnail_url || course.thumbnail_file_path ? (
               <img 
-                src={course.thumbnail_url}
+                src={course.thumbnail_url || `https://bnagwpdxehzqfkfrozeh.supabase.co/storage/v1/object/public/course-materials/${course.thumbnail_file_path}`}
                 alt={course.title}
                 className="w-full h-full object-cover"
               />
@@ -153,6 +158,11 @@ const FeaturedCourses = () => {
               <span>🗺️</span>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+            {type === 'coming-soon' && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-white text-lg font-semibold">Coming Soon</span>
+              </div>
+            )}
             <div className="absolute top-4 right-4">
               <Badge className="bg-geo-highlight/90 text-black font-semibold">
                 {course.difficulty_level}
@@ -228,6 +238,15 @@ const FeaturedCourses = () => {
               {enrollMutation.isPending ? 'Enrolling...' : 'Enroll Now'}
             </Button>
           )}
+
+          {type === 'coming-soon' && (
+            <Button 
+              disabled
+              className="w-full font-semibold bg-muted text-muted-foreground cursor-not-allowed"
+            >
+              Coming Soon
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -259,13 +278,25 @@ const FeaturedCourses = () => {
 
         {/* Available Courses */}
         {availableCourses.length > 0 && (
-          <div>
+          <div className="mb-16">
             <h3 className="text-2xl font-bold mb-6 text-center">
               {user && enrolledCourses.length > 0 ? 'More Courses' : 'Available Courses'}
             </h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               {availableCourses.map((course) => (
                 <CourseCard key={course.id} course={course} type="available" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Coming Soon Courses */}
+        {comingSoonCourses.length > 0 && (
+          <div>
+            <h3 className="text-2xl font-bold mb-6 text-center">Coming Soon</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+              {comingSoonCourses.map((course) => (
+                <CourseCard key={course.id} course={course} type="coming-soon" />
               ))}
             </div>
           </div>
