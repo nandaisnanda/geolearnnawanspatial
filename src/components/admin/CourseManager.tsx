@@ -466,18 +466,33 @@ const CourseManager = () => {
                 <input
                   type="checkbox"
                   id="is_published"
-                  checked={formData.is_published}
-                  onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
+                  checked={formData.is_published || formData.coming_soon}
+                  onChange={(e) => {
+                    if (formData.coming_soon && !e.target.checked) {
+                      // If coming soon is checked, prevent unchecking published
+                      return;
+                    }
+                    setFormData({ ...formData, is_published: e.target.checked });
+                  }}
+                  disabled={formData.coming_soon}
                   className="rounded"
                 />
-                <label htmlFor="is_published" className="text-sm">Publish Course</label>
+                <label htmlFor="is_published" className="text-sm">
+                  Publish Course {formData.coming_soon && "(Auto-enabled for Coming Soon)"}
+                </label>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="coming_soon"
                   checked={formData.coming_soon}
-                  onChange={(e) => setFormData({ ...formData, coming_soon: e.target.checked })}
+                  onChange={(e) => {
+                    setFormData({ 
+                      ...formData, 
+                      coming_soon: e.target.checked,
+                      is_published: e.target.checked || formData.is_published
+                    });
+                  }}
                   className="rounded"
                 />
                 <label htmlFor="coming_soon" className="text-sm">Coming Soon</label>
